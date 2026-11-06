@@ -1,0 +1,230 @@
+@model IReadOnlyList<HRMS.Models.HolidayModel>
+@{
+    ViewData["Title"] = "Holiday Master";
+    int selectedYear = ViewBag.SelectedYear ?? DateTime.Today.Year;
+    string selectedType = ViewBag.SelectedType ?? "All";
+    string? selectedDeptId = ViewBag.SelectedDepartmentId;
+    string? selectedLoc = ViewBag.SelectedLocationCode;
+    var departments = ViewBag.Departments as IReadOnlyList<HRMS.Models.DepartmentModel> ?? new List<HRMS.Models.DepartmentModel>();
+    var upcoming = ViewBag.UpcomingHolidays as IReadOnlyList<HRMS.Models.HolidayModel> ?? new List<HRMS.Models.HolidayModel>();
+}
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-calendar-heart-fill text-teal me-2" style="color:#0d9488;"></i> Holiday Master
+        </h4>
+        <div class="text-muted small">Manage organizational holidays, public observances, and department schedules</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Calendar" asp-route-year="@selectedYear" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-calendar3"></i> Calendar View
+        </a>
+        <a asp-action="Create" class="btn btn-hrms-teal btn-sm px-3 d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-plus-circle-fill"></i> Add Holiday
+        </a>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-2 g-sm-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-teal">
+                <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number">@Model.Count</div>
+                <div class="kpi-label">Holidays in @selectedYear</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-green">
+                <i class="bi bi-flag-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number">@Model.Count(h => h.HolidayType == "National")</div>
+                <div class="kpi-label">National Holidays</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-blue">
+                <i class="bi bi-stars"></i>
+            </div>
+            <div>
+                <div class="kpi-number">@Model.Count(h => h.HolidayType == "Festival")</div>
+                <div class="kpi-label">Festival Holidays</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-amber">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div>
+                <div class="kpi-number">@upcoming.Count</div>
+                <div class="kpi-label">Upcoming Holidays</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Card -->
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Year</label>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit();">
+                    @for (int y = selectedYear - 2; y <= selectedYear + 2; y++)
+                    {
+                        <option value="@y" selected="@(y == selectedYear)">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1">Holiday Type</label>
+                <select name="type" class="form-select form-select-sm" onchange="this.form.submit();">
+                    <option value="All" selected="@(selectedType == "All")">All Types</option>
+                    <option value="National" selected="@(selectedType == "National")">National</option>
+                    <option value="Public" selected="@(selectedType == "Public")">Public</option>
+                    <option value="Festival" selected="@(selectedType == "Festival")">Festival</option>
+                    <option value="Optional" selected="@(selectedType == "Optional")">Optional</option>
+                    <option value="Company" selected="@(selectedType == "Company")">Company</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-7">
+                <label class="form-label small text-muted mb-1">Department Scope</label>
+                <div class="input-group input-group-sm">
+                    <select name="departmentId" class="form-select" onchange="this.form.submit();">
+                        <option value="">All Departments (Organization Wide)</option>
+                        @foreach (var d in departments)
+                        {
+                            <option value="@d.DepartmentId" selected="@(d.DepartmentId == selectedDeptId)">@d.DepartmentName</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-outline-secondary px-3 d-flex align-items-center justify-content-center" style="height: 31px;" title="Apply Filter">
+                        <i class="bi bi-funnel"></i>
+                    </button>
+                    @if (selectedType != "All" || !string.IsNullOrEmpty(selectedDeptId))
+                    {
+                        <a asp-action="Index" asp-route-year="@selectedYear" class="btn btn-outline-secondary d-flex align-items-center" title="Reset Filters" style="height:31px;">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    }
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Holiday List Table -->
+<div class="card border shadow-sm rounded-3 mb-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table hrms-table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th style="min-width: 140px;">Holiday Date</th>
+                    <th>Day</th>
+                    <th>Holiday Name</th>
+                    <th>Type</th>
+                    <th>Applicable Scope</th>
+                    <th>Paid Status</th>
+                    <th>Status</th>
+                    <th class="text-end" style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                            <div class="fw-semibold">No holidays recorded for the selected criteria in @selectedYear.</div>
+                            <div class="small">Click "Add Holiday" to register an upcoming holiday.</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    var deptLookup = departments.ToDictionary(d => d.DepartmentId, d => d.DepartmentName, StringComparer.OrdinalIgnoreCase);
+                    @foreach (var holiday in Model)
+                    {
+                        string badgeClass = holiday.HolidayType switch
+                        {
+                            "National" => "bg-danger-subtle text-danger border-danger-subtle",
+                            "Festival" => "bg-warning-subtle text-warning-emphasis border-warning-subtle",
+                            "Company" => "bg-primary-subtle text-primary border-primary-subtle",
+                            _ => "bg-info-subtle text-info-emphasis border-info-subtle"
+                        };
+
+                        string scopeText = !string.IsNullOrEmpty(holiday.DepartmentId) && deptLookup.TryGetValue(holiday.DepartmentId, out var dn)
+                            ? $"Department: {dn}"
+                            : (!string.IsNullOrEmpty(holiday.LocationCode) ? $"Location: {holiday.LocationCode}" : "All Organization");
+
+                        <tr>
+                            <td class="fw-bold text-dark font-monospace">@holiday.HolidayDate.ToString("dd MMM yyyy")</td>
+                            <td class="text-muted small">@holiday.HolidayDate.ToString("dddd")</td>
+                            <td>
+                                <div class="fw-semibold text-dark">@holiday.HolidayName</div>
+                                @if (!string.IsNullOrEmpty(holiday.Description))
+                                {
+                                    <div class="text-muted small" style="font-size: 0.75rem;">@holiday.Description</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @badgeClass border px-2 py-1">@holiday.HolidayType</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-geo-alt me-1 text-muted"></i>@scopeText
+                                </span>
+                            </td>
+                            <td>
+                                @if (holiday.IsPaidHoliday)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <i class="bi bi-check-circle me-1"></i> Paid
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border">Unpaid</span>
+                                }
+                            </td>
+                            <td>
+                                @if (holiday.IsActive)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a asp-action="Edit" asp-route-id="@holiday.HolidayId" class="btn btn-outline-secondary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@holiday.HolidayId" method="post" class="d-inline" onsubmit="return confirm('Delete holiday @holiday.HolidayName?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

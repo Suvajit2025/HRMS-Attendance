@@ -1,0 +1,109 @@
+@model HRMS.Models.LeaveTypeModel
+@{
+    ViewData["Title"] = "Add Leave Type";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">Add Leave Type</h4>
+                <div class="text-muted small">Create a new statutory or corporate leave type</div>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Leave Types
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" asp-action="Create">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-dark mb-1">Leave Code <span class="text-danger">*</span></label>
+                            <input asp-for="LeaveCode" class="form-control text-uppercase font-monospace" placeholder="e.g. CL, SL" required />
+                            <span asp-validation-for="LeaveCode" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small text-dark mb-1">Leave Name <span class="text-danger">*</span></label>
+                            <input asp-for="LeaveName" class="form-control" placeholder="e.g. Casual Leave" required />
+                            <span asp-validation-for="LeaveName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-dark mb-1">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="2" placeholder="Purpose or eligibility details..."></textarea>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsPaidLeave" class="form-check-input" type="checkbox" id="checkPaid" checked />
+                                <label class="form-check-label fw-semibold small" for="checkPaid">Paid Leave</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsHalfDayAllowed" class="form-check-input" type="checkbox" id="checkHalf" checked />
+                                <label class="form-check-label fw-semibold small" for="checkHalf">Allow Half Day</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="RequiresApproval" class="form-check-input" type="checkbox" id="checkAppr" checked />
+                                <label class="form-check-label fw-semibold small" for="checkAppr">Requires Approval</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="RequiresDocument" class="form-check-input" type="checkbox" id="checkDoc" />
+                                <label class="form-check-label fw-semibold small" for="checkDoc">Requires Document</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsCarryForwardAllowed" class="form-check-input" type="checkbox" id="checkCF" onchange="toggleCF(this.checked)" />
+                                <label class="form-check-label fw-semibold small" for="checkCF">Allow Carry Forward</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4" id="cfDiv" style="display: @(Model.IsCarryForwardAllowed ? "block" : "none");">
+                            <label class="form-label fw-semibold small text-dark mb-1">Max Carry Forward (Days)</label>
+                            <input asp-for="MaximumCarryForward" type="number" class="form-control form-control-sm" min="0" max="90" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="checkActive" checked />
+                                <label class="form-check-label fw-semibold small" for="checkActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-hrms-teal px-4 fw-semibold">
+                                <i class="bi bi-check-lg me-1"></i> Save Leave Type
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleCF(checked) {
+        document.getElementById('cfDiv').style.display = checked ? 'block' : 'none';
+    }
+</script>
+}
+

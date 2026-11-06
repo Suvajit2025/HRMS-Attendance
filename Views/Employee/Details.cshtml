@@ -1,0 +1,217 @@
+@model HRMS.ViewModels.EmployeeDetailsViewModel
+@{
+    ViewData["Title"] = $"Employee Profile — {Model.Employee.FullName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Employee Profile</h4>
+        <div class="text-muted small">Workforce identification & attendance records</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Employee.EmployeeId" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil me-1"></i> Edit Profile
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Directory
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Profile Summary Card -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 mb-4 text-center">
+            <div class="card-body p-4">
+                <div class="position-relative d-inline-block mb-3">
+                    <img src="@(string.IsNullOrEmpty(Model.Employee.Photo) ? "/images/avatar-default.png" : Model.Employee.Photo)"
+                         alt="@Model.Employee.FullName"
+                         class="rounded-circle shadow-sm border p-1"
+                         style="width: 130px; height: 130px; object-fit: cover;" />
+                    <span class="position-absolute bottom-0 end-0 badge rounded-pill @(Model.Employee.IsActive ? "bg-success" : "bg-danger") px-2 py-1">
+                        @(Model.Employee.IsActive ? "Active" : "Inactive")
+                    </span>
+                </div>
+
+                <h5 class="fw-bold text-dark mb-1">@Model.Employee.FullName</h5>
+                <div class="text-teal fw-semibold mb-2" style="color:#0d9488;">@Model.Employee.EmployeeNo</div>
+                <div class="badge bg-light text-dark border px-3 py-1 mb-3">
+                    @(Model.DepartmentName ?? Model.Employee.DepartmentName ?? "Unassigned Department")
+                </div>
+
+                <hr class="my-3 opacity-25">
+
+                <div class="d-flex justify-content-between align-items-center mb-2 px-2 small">
+                    <span class="text-muted">Face Biometric:</span>
+                    @if (Model.HasFaceRegistered)
+                    {
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-check-circle-fill me-1"></i> Enrolled
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Not Enrolled
+                        </span>
+                    }
+                </div>
+
+                <div class="d-grid gap-2 mt-3">
+                    <button type="button" class="btn btn-sm @(Model.Employee.IsActive ? "btn-outline-danger" : "btn-outline-success")" id="btnToggleActive" data-id="@Model.Employee.EmployeeId">
+                        <i class="bi bi-power me-1"></i>
+                        @(Model.Employee.IsActive ? "Deactivate Employee" : "Activate Employee")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Detailed Information & Attendance History -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-info-circle text-teal me-2" style="color:#0d9488;"></i> Official & Personal Details</h6>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Employee ID No.</div>
+                        <div class="fw-bold text-dark fs-6">@Model.Employee.EmployeeNo</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Department</div>
+                        <div class="fw-bold text-dark fs-6">@(Model.DepartmentName ?? Model.Employee.DepartmentName ?? "Unassigned")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Date of Joining</div>
+                        <div class="fw-bold text-dark fs-6">@Model.Employee.JoiningDate.ToString("dd MMMM yyyy")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Date of Birth</div>
+                        <div class="fw-bold text-dark fs-6">@Model.Employee.DOB.ToString("dd MMMM yyyy")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Gender</div>
+                        <div class="fw-bold text-dark fs-6">@Model.Employee.Gender</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Phone Contact</div>
+                        <div class="fw-bold text-dark fs-6">@(Model.Employee.PhoneNo ?? "Not provided")</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted small">Aadhaar Card No. (Protected Identity)</div>
+                        <div class="fw-bold text-dark fs-6 font-monospace">
+                            <i class="bi bi-shield-check text-success me-1"></i> @Model.Employee.MaskedAadhaar
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history text-teal me-2" style="color:#0d9488;"></i> Recent Attendance Records</h6>
+                <a asp-controller="Attendance" asp-action="History" asp-route-employeeId="@Model.Employee.EmployeeId" class="btn btn-sm btn-link text-decoration-none">View Full History</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table hrms-table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Punch Type</th>
+                            <th>Time</th>
+                            <th>Verification</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentAttendance.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-calendar-x fs-4 d-block mb-1"></i> No recent punches recorded for this employee.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var punch in Model.RecentAttendance.Take(7))
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@punch.AttendanceDate.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <span class="badge @(punch.PunchType == "IN" ? "bg-success" : "bg-warning text-dark")">
+                                            @punch.PunchType
+                                        </span>
+                                    </td>
+                                    <td class="font-monospace">@punch.PunchTime.ToString("hh:mm:ss tt")</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            <i class="bi @(punch.VerificationMethod == "FaceRecognition" ? "bi-person-bounding-box text-teal" : "bi-hand-index-thumb")"></i>
+                                            @punch.VerificationMethod
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if (punch.MatchScore.HasValue)
+                                        {
+                                            <span class="badge bg-light text-dark border">@((int)(punch.MatchScore.Value * 100))%</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">--</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (punch.IsLate)
+                                        {
+                                            <span class="badge badge-late">
+                                                <i class="bi bi-clock-history"></i> Late Arrival
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-present">
+                                                <i class="bi bi-check-circle-fill"></i> Regular
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('btnToggleActive').addEventListener('click', async function() {
+            const empId = this.getAttribute('data-id');
+            if (!confirm('Are you sure you want to change the active status of this employee?')) return;
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const formData = new FormData();
+            formData.append('id', empId);
+
+            const res = await fetch('/Employee/ToggleStatus', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': token
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Error toggling employee status');
+            }
+        });
+    </script>
+}
+

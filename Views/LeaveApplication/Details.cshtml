@@ -1,0 +1,145 @@
+@model HRMS.Models.LeaveApplicationModel
+@{
+    ViewData["Title"] = "Leave Application Details";
+    var employee = ViewBag.Employee as HRMS.Models.EmployeeModel;
+    var leaveType = ViewBag.LeaveType as HRMS.Models.LeaveTypeModel;
+    string deptName = ViewBag.DepartmentName as string ?? "General";
+
+    string statusBadge = Model.Status switch
+    {
+        "Approved" => "bg-success-subtle text-success border border-success-subtle",
+        "Pending" => "bg-warning-subtle text-warning-emphasis border border-warning-subtle",
+        "Rejected" => "bg-danger-subtle text-danger border border-danger-subtle",
+        "Cancelled" => "bg-secondary-subtle text-secondary border",
+        _ => "bg-light text-dark border"
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">Leave Application Details</h4>
+                <div class="text-muted small">Application Ref: <span class="font-monospace">@Model.LeaveApplicationId</span></div>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Applications
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="badge @statusBadge px-3 py-1 fs-6">@Model.Status</span>
+                <span class="text-muted small font-monospace">Applied: @Model.ApplicationDate.ToString("dd MMM yyyy, hh:mm tt")</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Employee</div>
+                        <div class="fw-bold fs-6 text-dark">@(employee?.FullName ?? "--")</div>
+                        <div class="text-muted small font-monospace">@(employee?.EmployeeNo ?? "--") &bull; @deptName</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Leave Category</div>
+                        <div class="fw-bold fs-6 text-teal" style="color:#0d9488;">
+                            @(leaveType?.LeaveName ?? Model.LeaveTypeId) (@(leaveType?.LeaveCode ?? "--"))
+                        </div>
+                        <div class="text-muted small">@(leaveType?.IsPaidLeave == true ? "Paid Leave" : "Unpaid Leave (LOP)")</div>
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Leave Period</div>
+                        <div class="fw-bold text-dark fs-6">
+                            @Model.FromDate.ToString("dd MMM yyyy")
+                            @if (Model.FromDate != Model.ToDate)
+                            {
+                                <span> — @Model.ToDate.ToString("dd MMM yyyy")</span>
+                            }
+                        </div>
+                        @if (Model.IsHalfDay)
+                        {
+                            <span class="badge bg-light text-muted border">Half Day (@Model.HalfDaySession)</span>
+                        }
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Chargeable Duration</div>
+                        <div class="fw-bold text-dark fs-4 font-monospace">@Model.TotalDays Day(s)</div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="text-muted small">Reason for Leave</div>
+                        <div class="p-3 bg-light rounded-2 border text-dark mt-1">@Model.Reason</div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.SupportingDocumentPath))
+                    {
+                        <div class="col-12">
+                            <div class="text-muted small">Supporting Document</div>
+                            <div class="mt-1">
+                                <a href="@Model.SupportingDocumentPath" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> View / Download Document
+                                </a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model.Status == "Approved")
+                    {
+                        <div class="col-12 pt-3 border-top">
+                            <div class="alert alert-success d-flex align-items-center mb-0" role="alert">
+                                <i class="bi bi-check-circle-fill fs-5 me-2"></i>
+                                <div>
+                                    Approved by <strong>@Model.ApprovedBy</strong> on @Model.ApprovedDate?.ToString("dd MMM yyyy, hh:mm tt")
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (Model.Status == "Rejected")
+                    {
+                        <div class="col-12 pt-3 border-top">
+                            <div class="alert alert-danger mb-0" role="alert">
+                                <div class="fw-bold"><i class="bi bi-x-circle-fill me-1"></i> Application Rejected</div>
+                                <div class="small mt-1">Reason: @Model.RejectionReason</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (Model.Status == "Pending" || Model.Status == "Approved")
+                {
+                    <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                            <i class="bi bi-x-lg me-1"></i> Cancel Application
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.LeaveApplicationId">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-dark">Cancel Leave Application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Cancelling this application will release reserved/consumed balances back to the employee's ledger.</p>
+                    <label class="form-label small fw-semibold text-dark">Cancellation Reason</label>
+                    <textarea name="cancellationReason" class="form-control" rows="3" placeholder="Explain reason for cancellation..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Confirm Cancellation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

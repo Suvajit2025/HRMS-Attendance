@@ -1,0 +1,169 @@
+@model HRMS.ViewModels.MonthlyAttendanceReportViewModel
+
+<div class="attendance-matrix-container shadow-sm rounded-3 border bg-white mb-4">
+    <!-- Quick Scroll Navigation Controls (Hidden in Print) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between p-2 px-3 border-bottom bg-light no-print matrix-scroll-bar">
+        <div class="d-flex align-items-center gap-2 text-secondary small">
+            <span class="badge bg-white text-dark border px-2 py-1 shadow-xs fw-semibold">
+                <i class="bi bi-calendar3 me-1 text-teal"></i>Monthly Attendance Register
+            </span>
+            <span class="d-none d-md-inline text-muted" style="font-size: 0.78rem;">
+                <i class="bi bi-info-circle me-1"></i>Codes: <strong>P</strong> (Present), <strong>A</strong> (Absent), <strong>H</strong> (Sunday Holiday), <strong>—</strong> (Blank: Before Joining / Future)
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-1 ms-auto flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2 fw-semibold" style="font-size: 0.72rem;" onclick="scrollMatrix(-250);" title="Scroll Left">
+                <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline ms-1">Left</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2 fw-semibold" style="font-size: 0.72rem;" onclick="scrollMatrix(250);" title="Scroll Right">
+                <span class="d-none d-sm-inline me-1">Right</span><i class="bi bi-chevron-right"></i>
+            </button>
+            <button type="button" class="btn btn-teal-subtle text-teal btn-sm py-1 px-2 fw-semibold border" style="font-size: 0.72rem; background-color: #f0fdfa;" onclick="scrollMatrixTo(0);" title="Jump to Day 1">
+                <i class="bi bi-skip-backward-fill me-1"></i>Day 1
+            </button>
+            <button type="button" class="btn btn-teal-subtle text-teal btn-sm py-1 px-2 fw-semibold border" style="font-size: 0.72rem; background-color: #f0fdfa;" onclick="scrollMatrixTo(99999);" title="Jump to Summary Totals">
+                Totals<i class="bi bi-skip-forward-fill ms-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Matrix Scroll Wrapper with Enhanced Scrollbars -->
+    <div class="matrix-scroll-wrapper" id="matrixScrollWrapper" style="overflow-x: auto; overflow-y: auto; max-height: 65vh; width: 100%; position: relative;">
+        <table class="table table-bordered table-hover align-middle mb-0 attendance-matrix-table">
+            <thead>
+                <tr class="matrix-header-row text-center">
+                    <th class="sticky-col-header text-start ps-3" style="min-width: 230px; width: 230px;">
+                        Employee Details
+                    </th>
+                    <th class="sticky-col-empno" style="min-width: 90px; width: 90px;">
+                        EMP ID
+                    </th>
+                    @for (int day = 1; day <= Model.DaysInMonth; day++)
+                    {
+                        var date = new DateOnly(Model.Filter.Year, Model.Filter.Month, day);
+                        bool isSun = (date.DayOfWeek == DayOfWeek.Sunday);
+                        <th class="day-col-header @(isSun ? "weekend-col-header" : "")" style="min-width: 38px; width: 38px; font-size: 0.75rem; padding: 4px 2px;">
+                            <div class="fw-bold">@day</div>
+                            <div class="text-uppercase" style="font-size: 0.65rem; opacity: 0.85;">@date.ToString("ddd")</div>
+                        </th>
+                    }
+                    <th class="summary-col-header code-p-header" title="Present Days (P)" style="min-width: 70px;">Present (P)</th>
+                    <th class="summary-col-header code-a-header" title="Absent Days (A)" style="min-width: 70px;">Absent (A)</th>
+                    <th class="summary-col-header code-h-header" title="Sunday / Holidays (H)" style="min-width: 70px;">Holiday (H)</th>
+                    <th class="summary-col-header pct-header" title="Attendance Percentage" style="min-width: 80px;">Att. %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Employees.Count == 0)
+                {
+                    <tr>
+                        <td colspan="@(Model.DaysInMonth + 6)" class="text-center py-5 text-muted">
+                            <i class="bi bi-person-x fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                            <div class="fw-semibold">No employees found matching the selected filter.</div>
+                            <div class="small">Try adjusting department or search filters.</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var emp in Model.Employees)
+                    {
+                        <tr class="employee-matrix-row">
+                            <!-- Sticky Employee Info Column -->
+                            <td class="sticky-col ps-3">
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(emp.PhotoPath))
+                                    {
+                                        <img src="@emp.PhotoPath" alt="@emp.EmployeeName" class="rounded-circle me-2 border object-fit-cover" style="width: 32px; height: 32px; flex-shrink: 0;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle me-2 bg-light text-secondary d-flex align-items-center justify-content-center border fw-bold" style="width: 32px; height: 32px; font-size: 0.75rem; flex-shrink: 0;">
+                                            @emp.EmployeeName.Substring(0, Math.Min(2, emp.EmployeeName.Length)).ToUpperInvariant()
+                                        </div>
+                                    }
+                                    <div class="text-truncate">
+                                        <div class="fw-semibold text-dark text-truncate" style="font-size: 0.85rem;" title="@emp.EmployeeName">@emp.EmployeeName</div>
+                                        <div class="text-muted text-truncate" style="font-size: 0.72rem;">
+                                            @emp.Designation
+                                            @if (emp.JoiningDate != default)
+                                            {
+                                                <span class="ms-1 opacity-75" title="Joined: @emp.JoiningDate:dd MMM yyyy">• J: @emp.JoiningDate.ToString("dd MMM yy")</span>
+                                            }
+                                        </div>
+                                        <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.65rem; padding: 2px 5px;">@emp.DepartmentName</span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Sticky Employee No Column with highlighted divider -->
+                            <td class="sticky-col-empno text-center font-monospace fw-semibold" style="font-size: 0.78rem;">
+                                @emp.EmployeeNo
+                            </td>
+
+                            <!-- Daily Cells 1 to DaysInMonth -->
+                            @for (int day = 1; day <= Model.DaysInMonth; day++)
+                            {
+                                emp.DailyStatuses.TryGetValue(day, out var dayStatus);
+                                string code = dayStatus?.StatusCode ?? "";
+                                string tooltip = dayStatus?.TooltipText ?? $"Day {day}";
+                                bool isSun = dayStatus?.IsWeekend ?? false;
+                                bool isBeforeJoin = dayStatus?.IsBeforeJoining ?? false;
+
+                                <td class="day-cell text-center p-1 @(isSun ? "weekend-cell" : "") @(isBeforeJoin ? "before-joining-cell" : "")" title="@tooltip">
+                                    @if (!string.IsNullOrEmpty(code))
+                                    {
+                                        <span class="att-code-badge @dayStatus?.CssClass">@code</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="att-code-empty">-</span>
+                                    }
+                                </td>
+                            }
+
+                            <!-- 3 Summary Columns + Percentage -->
+                            <td class="text-center fw-bold code-p-val">@emp.PresentDays</td>
+                            <td class="text-center fw-bold code-a-val">@emp.AbsentDays</td>
+                            <td class="text-center fw-bold code-h-val">@emp.HolidayDays</td>
+                            <td class="text-center">
+                                @{
+                                    string pctBadgeClass = emp.AttendancePercentage >= 90 ? "bg-success" :
+                                                           emp.AttendancePercentage >= 75 ? "bg-info text-dark" :
+                                                           emp.AttendancePercentage >= 50 ? "bg-warning text-dark" : "bg-danger";
+                                }
+                                <span class="badge @pctBadgeClass px-2 py-1" style="font-size: 0.75rem;">
+                                    @emp.AttendancePercentage.ToString("0.0")%
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            @if (Model.Employees.Count > 0)
+            {
+                <tfoot>
+                    <tr class="matrix-footer-row text-center fw-bold">
+                        <td class="sticky-col ps-3 text-start">
+                            <span class="text-uppercase" style="font-size: 0.75rem;">Total / Company Average</span>
+                        </td>
+                        <td class="sticky-col-empno text-center">
+                            @Model.Summary.TotalEmployees Emp
+                        </td>
+                        <td colspan="@Model.DaysInMonth" class="text-end pe-3 text-muted fw-normal" style="font-size: 0.75rem;">
+                            Aggregated Attendance Totals:
+                        </td>
+                        <td class="code-p-val">@Model.Summary.TotalPresentDays</td>
+                        <td class="code-a-val">@Model.Summary.TotalAbsentDays</td>
+                        <td class="code-h-val">@Model.Summary.TotalHolidayDays</td>
+                        <td>
+                            <span class="badge bg-dark px-2 py-1" style="font-size: 0.75rem;">
+                                @Model.Summary.AverageAttendancePercentage.ToString("0.0")%
+                            </span>
+                        </td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+</div>

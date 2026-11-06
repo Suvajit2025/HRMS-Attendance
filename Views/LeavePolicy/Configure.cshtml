@@ -1,0 +1,134 @@
+@model HRMS.Models.LeavePolicyModel
+@{
+    ViewData["Title"] = $"Configure Policy — {Model.PolicyName}";
+    var leaveTypes = ViewBag.LeaveTypes as IReadOnlyList<HRMS.Models.LeaveTypeModel> ?? new List<HRMS.Models.LeaveTypeModel>();
+    var departments = ViewBag.Departments as IReadOnlyList<HRMS.Models.DepartmentModel> ?? new List<HRMS.Models.DepartmentModel>();
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">Configure Leave Policy</h4>
+                <div class="text-muted small">Update rules, entitlements, and deduction behaviors</div>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Policies
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" asp-action="Configure" asp-route-id="@Model.LeavePolicyId">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="LeavePolicyId" />
+                    <input type="hidden" asp-for="CreatedDate" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold small text-dark mb-1">Policy Name <span class="text-danger">*</span></label>
+                            <input asp-for="PolicyName" class="form-control" required />
+                            <span asp-validation-for="PolicyName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold small text-dark mb-1">Leave Type <span class="text-danger">*</span></label>
+                            <select asp-for="LeaveTypeId" class="form-select" required>
+                                @foreach (var t in leaveTypes)
+                                {
+                                    <option value="@t.LeaveTypeId">@t.LeaveName (@t.LeaveCode)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="LeaveTypeId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Department Scope</label>
+                            <select asp-for="DepartmentId" class="form-select">
+                                <option value="">Entire Organization (All Departments)</option>
+                                @foreach (var d in departments)
+                                {
+                                    <option value="@d.DepartmentId">@d.DepartmentName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Accrual Frequency</label>
+                            <select asp-for="AccrualFrequency" class="form-select">
+                                <option value="Annual">Annual (Upfront allocation)</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Quarterly">Quarterly</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-dark mb-1">Annual Entitlement (Days)</label>
+                            <input asp-for="AnnualEntitlement" type="number" step="0.5" class="form-control" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-dark mb-1">Accrual Amount</label>
+                            <input asp-for="AccrualAmount" type="number" step="0.5" class="form-control" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-dark mb-1">Maximum Balance Cap</label>
+                            <input asp-for="MaximumBalance" type="number" step="0.5" class="form-control" required />
+                        </div>
+
+                        <!-- Calendar Deduction Rules -->
+                        <div class="col-12 pt-2 border-top">
+                            <h6 class="fw-bold text-dark mb-2">Calendar Deduction & Calculation Rules</h6>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="ExcludeWeeklyOffs" class="form-check-input" type="checkbox" id="checkExOff" />
+                                <label class="form-check-label fw-semibold small" for="checkExOff">Exclude Weekly Offs</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="ExcludeHolidays" class="form-check-input" type="checkbox" id="checkExHol" />
+                                <label class="form-check-label fw-semibold small" for="checkExHol">Exclude Holidays</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="EnableSandwichRule" class="form-check-input" type="checkbox" id="checkSandwich" />
+                                <label class="form-check-label fw-semibold small" for="checkSandwich">Enable Sandwich Rule</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="AllowNegativeBalance" class="form-check-input" type="checkbox" id="checkNeg" />
+                                <label class="form-check-label fw-semibold small" for="checkNeg">Allow Negative Balance</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="checkActive" />
+                                <label class="form-check-label fw-semibold small" for="checkActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-hrms-teal px-4 fw-semibold">
+                                <i class="bi bi-check-lg me-1"></i> Update Policy
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,98 @@
+@model IReadOnlyList<HRMS.Models.LeavePolicyModel>
+@{
+    ViewData["Title"] = "Leave Policies";
+    var leaveTypes = ViewBag.LeaveTypes as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var departments = ViewBag.Departments as Dictionary<string, string> ?? new Dictionary<string, string>();
+}
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-shield-shaded text-teal me-2" style="color:#0d9488;"></i> Leave Policy Master
+        </h4>
+        <div class="text-muted small">Configure entitlement rules, accrual schedules, and calendar deduction policies</div>
+    </div>
+    <a asp-action="Create" class="btn btn-hrms-teal btn-sm px-3 d-flex align-items-center gap-1 shadow-sm">
+        <i class="bi bi-plus-circle-fill"></i> Add Policy
+    </a>
+</div>
+
+<!-- Policies Table -->
+<div class="card border shadow-sm rounded-3 overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table class="table hrms-table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th>Policy Name</th>
+                    <th>Leave Type</th>
+                    <th>Department Scope</th>
+                    <th>Annual Entitlement</th>
+                    <th>Accrual Frequency</th>
+                    <th>Sandwich Rule</th>
+                    <th>Status</th>
+                    <th class="text-end" style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var policy in Model)
+                {
+                    leaveTypes.TryGetValue(policy.LeaveTypeId, out var ltName);
+                    string scope = !string.IsNullOrEmpty(policy.DepartmentId) && departments.TryGetValue(policy.DepartmentId, out var dn)
+                        ? $"Department: {dn}"
+                        : "Organization Wide";
+
+                    <tr>
+                        <td class="fw-bold text-dark">@policy.PolicyName</td>
+                        <td>
+                            <span class="badge bg-light text-teal border fw-semibold">
+                                @(ltName ?? policy.LeaveTypeId)
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-secondary border">@scope</span>
+                        </td>
+                        <td class="fw-bold font-monospace">@policy.AnnualEntitlement Days</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">@policy.AccrualFrequency</span>
+                        </td>
+                        <td>
+                            @if (policy.EnableSandwichRule)
+                            {
+                                <span class="badge bg-warning-subtle text-warning-emphasis border">Enabled</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border">Disabled</span>
+                            }
+                        </td>
+                        <td>
+                            @if (policy.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary border">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Configure" asp-route-id="@policy.LeavePolicyId" class="btn btn-outline-secondary" title="Configure">
+                                    <i class="bi bi-gear"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@policy.LeavePolicyId" method="post" class="d-inline" onsubmit="return confirm('Delete policy @policy.PolicyName?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+

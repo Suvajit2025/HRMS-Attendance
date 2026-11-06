@@ -1,0 +1,124 @@
+@model HRMS.Models.AppSettingsModel
+@{
+    ViewData["Title"] = "System Settings & Configuration";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">System Configuration</h4>
+        <div class="text-muted small">Configure workforce rules, shifts, face match calibration & storage paths</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Form Settings -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-sliders text-teal me-2" style="color:#0d9488;"></i> Operational Parameters</h6>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Index" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger small mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="CompanyName" class="form-label fw-semibold small text-muted">Organization Name</label>
+                            <input asp-for="CompanyName" class="form-control" required />
+                            <span asp-validation-for="CompanyName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="AppTitle" class="form-label fw-semibold small text-muted">Application Title</label>
+                            <input asp-for="AppTitle" class="form-control" required />
+                            <span asp-validation-for="AppTitle" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ShiftStartTime" class="form-label fw-semibold small text-muted">Standard Shift Start (Late Threshold)</label>
+                            <input asp-for="ShiftStartTime" class="form-control font-monospace" placeholder="09:00:00" required />
+                            <div class="form-text small text-muted">Arrivals after this time are marked Late.</div>
+                            <span asp-validation-for="ShiftStartTime" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ShiftEndTime" class="form-label fw-semibold small text-muted">Standard Shift End</label>
+                            <input asp-for="ShiftEndTime" class="form-control font-monospace" placeholder="18:00:00" required />
+                            <span asp-validation-for="ShiftEndTime" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="FaceMatchThreshold" class="form-label fw-semibold small text-muted">Face Match Threshold (0.50 - 0.90)</label>
+                            <input asp-for="FaceMatchThreshold" class="form-control font-monospace" type="number" step="0.05" min="0.40" max="0.95" required />
+                            <div class="form-text small text-muted">Recommended: 0.65 for optical matching.</div>
+                            <span asp-validation-for="FaceMatchThreshold" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="TimeZoneId" class="form-label fw-semibold small text-muted">Server Time Zone</label>
+                            <input asp-for="TimeZoneId" class="form-control font-monospace" placeholder="India Standard Time" required />
+                            <span asp-validation-for="TimeZoneId" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="submit" class="btn btn-hrms-teal fw-bold px-4">
+                            <i class="bi bi-check-lg me-1"></i> Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Storage Architecture & Backup Guide -->
+    <div class="col-lg-5">
+        <!-- Storage Provider Status -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-hdd-network text-teal me-2" style="color:#0d9488;"></i> Storage Infrastructure</h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">Active Storage Provider:</span>
+                    <span class="badge bg-primary px-2 py-1">JSON File Storage (Decoupled)</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="small text-muted">Database Migration Status:</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">SQL Server Ready</span>
+                </div>
+
+                <div class="small text-muted mb-1 fw-semibold">Runtime Data Directory:</div>
+                <div class="p-2 bg-light rounded border font-monospace small mb-3 text-break">
+                    @ViewBag.DataDirectory
+                </div>
+
+                <div class="small text-muted mb-1 fw-semibold">Uploads Directory:</div>
+                <div class="p-2 bg-light rounded border font-monospace small text-break">
+                    @ViewBag.UploadsDirectory
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup & Restore Instructions -->
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-shield-check text-teal me-2" style="color:#0d9488;"></i> Backup & Disaster Recovery</h6>
+            </div>
+            <div class="card-body p-3 small text-secondary">
+                <p class="mb-2">
+                    To perform a full offline backup of HRMS data and photographs:
+                </p>
+                <ol class="ps-3 mb-2">
+                    <li>Copy the entire folder: <code>%LocalAppData%\HRMS</code></li>
+                    <li>Store the archive safely on an external volume or network share.</li>
+                </ol>
+                <p class="mb-0">
+                    To restore on any Windows workstation, simply place the backed up <code>HRMS</code> folder into <code>%LocalAppData%</code> before launching <code>HRMS.exe</code>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,170 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+}
+
+<aside class="hrms-sidebar" id="hrmsSidebar">
+    <div class="hrms-brand">
+        <div class="hrms-brand-content">
+            <div class="hrms-brand-logo shadow-sm">
+                <i class="bi bi-shield-check"></i>
+            </div>
+            <div>
+                <div class="hrms-brand-text">HRMS</div>
+                <div class="hrms-brand-sub">Workforce OS</div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-link text-muted d-lg-none ms-auto p-1 text-decoration-none" id="btnSidebarCloseMobile" aria-label="Close navigation drawer" title="Close">
+            <i class="bi bi-x-lg fs-5"></i>
+        </button>
+    </div>
+
+    <div class="hrms-nav">
+        <div class="hrms-nav-section-title">Core Operations</div>
+
+        <a class="hrms-nav-link @(currentController == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index" title="Dashboard">
+            <i class="bi bi-grid-1x2-fill"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Workforce</div>
+
+        <a class="hrms-nav-link @(currentController == "Employee" && currentAction == "Index" ? "active" : "")" asp-controller="Employee" asp-action="Index" title="Employee Directory">
+            <i class="bi bi-people-fill"></i>
+            <span>Employee Directory</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "Employee" && currentAction == "Create" ? "active" : "")" asp-controller="Employee" asp-action="Create" title="Add Employee">
+            <i class="bi bi-person-plus-fill"></i>
+            <span>Add Employee</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "Department" ? "active" : "")" asp-controller="Department" asp-action="Index" title="Departments">
+            <i class="bi bi-diagram-3-fill"></i>
+            <span>Departments</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Attendance</div>
+
+        <a class="hrms-nav-link @(currentController == "Attendance" && currentAction == "Terminal" ? "active" : "")" asp-controller="Attendance" asp-action="Terminal" title="Attendance Terminal">
+            <i class="bi bi-camera-video-fill"></i>
+            <span>Attendance Terminal</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "Attendance" && currentAction == "Daily" ? "active" : "")" asp-controller="Attendance" asp-action="Daily" title="Daily Attendance">
+            <i class="bi bi-calendar2-check-fill"></i>
+            <span>Daily Attendance</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "Attendance" && currentAction == "History" ? "active" : "")" asp-controller="Attendance" asp-action="History" title="Attendance History">
+            <i class="bi bi-clock-history"></i>
+            <span>Attendance History</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Attendance Reports</div>
+
+        <a class="hrms-nav-link @(currentController == "AttendanceReport" ? "active" : "")" asp-controller="AttendanceReport" asp-action="Index" title="Monthly Attendance Report">
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+            <span>Monthly Report</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Leave Management</div>
+
+        <a class="hrms-nav-link @(currentController == "LeaveReport" && currentAction == "Dashboard" ? "active" : "")" asp-controller="LeaveReport" asp-action="Dashboard" title="Leave Dashboard">
+            <i class="bi bi-speedometer2"></i>
+            <span>Leave Dashboard</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveApplication" && currentAction == "Index" ? "active" : "")" asp-controller="LeaveApplication" asp-action="Index" title="Leave Applications">
+            <i class="bi bi-journal-text"></i>
+            <span>Leave Applications</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveApplication" && currentAction == "Create" ? "active" : "")" asp-controller="LeaveApplication" asp-action="Create" title="Apply Leave">
+            <i class="bi bi-pencil-square"></i>
+            <span>Apply Leave</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveApproval" ? "active" : "")" asp-controller="LeaveApproval" asp-action="Index" title="Leave Approval">
+            <i class="bi bi-check2-circle"></i>
+            <span>Leave Approval</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveBalance" ? "active" : "")" asp-controller="LeaveBalance" asp-action="Index" title="Leave Balance">
+            <i class="bi bi-wallet2"></i>
+            <span>Leave Balance</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveReport" && currentAction == "Transactions" ? "active" : "")" asp-controller="LeaveReport" asp-action="Transactions" title="Leave Transactions">
+            <i class="bi bi-receipt"></i>
+            <span>Leave Transactions</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveReport" && currentAction == "Index" ? "active" : "")" asp-controller="LeaveReport" asp-action="Index" title="Leave Reports">
+            <i class="bi bi-file-earmark-bar-graph"></i>
+            <span>Leave Reports</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeaveType" ? "active" : "")" asp-controller="LeaveType" asp-action="Index" title="Leave Types">
+            <i class="bi bi-tag-fill"></i>
+            <span>Leave Types</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "LeavePolicy" ? "active" : "")" asp-controller="LeavePolicy" asp-action="Index" title="Leave Policies">
+            <i class="bi bi-shield-shaded"></i>
+            <span>Leave Policies</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Holiday Management</div>
+
+        <a class="hrms-nav-link @(currentController == "Holiday" && currentAction == "Calendar" ? "active" : "")" asp-controller="Holiday" asp-action="Calendar" title="Holiday Calendar">
+            <i class="bi bi-calendar3-event-fill"></i>
+            <span>Holiday Calendar</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "Holiday" && currentAction != "Calendar" ? "active" : "")" asp-controller="Holiday" asp-action="Index" title="Holiday Master">
+            <i class="bi bi-calendar-heart-fill"></i>
+            <span>Holiday Master</span>
+        </a>
+
+        <a class="hrms-nav-link @(currentController == "WeeklyOff" ? "active" : "")" asp-controller="WeeklyOff" asp-action="Index" title="Weekly Off Configuration">
+            <i class="bi bi-calendar-week-fill"></i>
+            <span>Weekly Off Setup</span>
+        </a>
+
+        <div class="hrms-nav-section-title">Payroll</div>
+
+        <div class="hrms-nav-link text-muted opacity-50" style="cursor: not-allowed;" title="Future Module">
+            <i class="bi bi-cash-stack"></i>
+            <span>Payroll</span>
+            <span class="badge bg-secondary ms-auto" style="font-size: 0.65rem;">Future</span>
+        </div>
+
+        <div class="hrms-nav-section-title">Configuration</div>
+
+        <a class="hrms-nav-link @(currentController == "Settings" ? "active" : "")" asp-controller="Settings" asp-action="Index" title="System Settings">
+            <i class="bi bi-sliders"></i>
+            <span>System Settings</span>
+        </a>
+    </div>
+
+    <div class="hrms-sidebar-footer">
+        <div class="d-flex align-items-center">
+            <div class="rounded-circle text-white user-avatar p-2 me-2 d-flex align-items-center justify-content-center" style="width:34px; height:34px; background-color:#0d9488; font-size:0.85rem;">
+                <i class="bi bi-person-fill"></i>
+            </div>
+            <div class="flex-grow-1 overflow-hidden user-details">
+                <div class="text-dark text-truncate fw-semibold small" style="font-size:0.82rem;">@User.Identity?.Name</div>
+                <div class="text-muted small" style="font-size:0.7rem;">Admin</div>
+            </div>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline ms-auto">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-link text-muted p-1" title="Sign Out">
+                    <i class="bi bi-box-arrow-right fs-5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</aside>
+
+<div class="sidebar-backdrop" id="hrmsSidebarBackdrop"></div>

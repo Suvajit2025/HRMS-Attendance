@@ -1,0 +1,111 @@
+@model HRMS.Models.WeeklyOffModel
+@{
+    bool isNew = string.IsNullOrEmpty(Model.WeeklyOffId);
+    ViewData["Title"] = isNew ? "Add Weekly Off Rule" : "Edit Weekly Off Rule";
+    var departments = ViewBag.Departments as IReadOnlyList<HRMS.Models.DepartmentModel> ?? new List<HRMS.Models.DepartmentModel>();
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">@(isNew ? "Add Weekly Off Rule" : "Edit Weekly Off Rule")</h4>
+                <div class="text-muted small">Configure recurring off days by department or organization</div>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Weekly Offs
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" asp-action="Configure">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="WeeklyOffId" />
+                    <input type="hidden" asp-for="CreatedDate" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Day of Week <span class="text-danger">*</span></label>
+                            <select asp-for="DayOfWeek" class="form-select">
+                                <option value="Sunday">Sunday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Department Scope</label>
+                            <select asp-for="DepartmentId" class="form-select">
+                                <option value="">Entire Organization (All Departments)</option>
+                                @foreach (var d in departments)
+                                {
+                                    <option value="@d.DepartmentId">@d.DepartmentName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Location Code (Optional)</label>
+                            <input asp-for="LocationCode" class="form-control" placeholder="e.g. Plant-1" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Effective From Date <span class="text-danger">*</span></label>
+                            <input asp-for="EffectiveFrom" type="date" class="form-control" required />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Effective To Date (Optional)</label>
+                            <input asp-for="EffectiveTo" type="date" class="form-control" />
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center pt-md-4">
+                            <div class="form-check form-switch me-4">
+                                <input asp-for="IsAlternateWeek" class="form-check-input" type="checkbox" id="checkAlternate" onchange="toggleAltWeek(this.checked)" />
+                                <label class="form-check-label fw-semibold small" for="checkAlternate">Alternate Week Only</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="checkActive" checked />
+                                <label class="form-check-label fw-semibold small" for="checkActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6" id="altWeekDiv" style="display: @(Model.IsAlternateWeek ? "block" : "none");">
+                            <label class="form-label fw-semibold small text-dark mb-1">Week Number (e.g. 2nd or 4th week of month)</label>
+                            <select asp-for="AlternateWeekNumber" class="form-select">
+                                <option value="1">1st Week</option>
+                                <option value="2">2nd Week (e.g. 2nd Saturday)</option>
+                                <option value="3">3rd Week</option>
+                                <option value="4">4th Week (e.g. 4th Saturday)</option>
+                                <option value="5">5th Week</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-hrms-teal px-4 fw-semibold">
+                                <i class="bi bi-check-lg me-1"></i> Save Configuration
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleAltWeek(checked) {
+        document.getElementById('altWeekDiv').style.display = checked ? 'block' : 'none';
+    }
+</script>
+}
+

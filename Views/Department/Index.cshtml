@@ -1,0 +1,61 @@
+@model IReadOnlyList<HRMS.Models.DepartmentModel>
+@{
+    ViewData["Title"] = "Department Management";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Industrial Departments</h4>
+        <div class="text-muted small">Organizational units & plant operational divisions</div>
+    </div>
+    <a asp-action="Create" class="btn btn-hrms-teal fw-semibold shadow-sm">
+        <i class="bi bi-plus-circle me-1"></i> Add Department
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table hrms-table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Department Name</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Created Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dept in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-teal-subtle text-teal p-2 me-3 d-flex align-items-center justify-content-center" style="width:36px; height:36px; background-color:#ccfbf1; color:#0d9488;">
+                                    <i class="bi bi-diagram-3"></i>
+                                </div>
+                                <div class="fw-bold text-dark">@dept.DepartmentName</div>
+                            </div>
+                        </td>
+                        <td class="text-muted">
+                            @(string.IsNullOrEmpty(dept.Description) ? "Standard plant department" : dept.Description)
+                        </td>
+                        <td>
+                            @if (dept.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-muted small">
+                            @dept.CreatedDate.ToString("dd MMM yyyy")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+

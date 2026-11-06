@@ -1,0 +1,191 @@
+@model HRMS.ViewModels.LeaveApplicationCreateViewModel
+@{
+    ViewData["Title"] = "Apply For Leave";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">Apply For Leave</h4>
+                <div class="text-muted small">Submit employee leave application with automated non-working day calculations</div>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Applications
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form method="post" asp-action="Create" enctype="multipart/form-data" id="leaveApplicationForm">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="row g-3">
+                        <!-- Employee Selector -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Select Employee <span class="text-danger">*</span></label>
+                            <select asp-for="EmployeeId" class="form-select" id="empSelect" required onchange="triggerDurationCalc();">
+                                <option value="">-- Choose Employee --</option>
+                                @foreach (var emp in Model.Employees)
+                                {
+                                    <option value="@emp.EmployeeId">@emp.EmployeeNo — @emp.FullName (@(emp.DepartmentName ?? "General"))</option>
+                                }
+                            </select>
+                            <span asp-validation-for="EmployeeId" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Leave Type Selector -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Leave Type <span class="text-danger">*</span></label>
+                            <select asp-for="LeaveTypeId" class="form-select" id="leaveTypeSelect" required onchange="onLeaveTypeChange();">
+                                <option value="">-- Choose Leave Type --</option>
+                                @foreach (var lt in Model.LeaveTypes)
+                                {
+                                    <option value="@lt.LeaveTypeId" data-requires-doc="@(lt.RequiresDocument ? "true" : "false")" data-paid="@(lt.IsPaidLeave ? "true" : "false")">
+                                        @lt.LeaveName (@lt.LeaveCode) @(lt.IsPaidLeave ? "[Paid]" : "[Unpaid]")
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="LeaveTypeId" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Half Day Switch -->
+                        <div class="col-12">
+                            <div class="p-2 bg-light rounded-2 border d-flex flex-wrap align-items-center gap-3">
+                                <div class="form-check form-switch mb-0">
+                                    <input asp-for="IsHalfDay" class="form-check-input" type="checkbox" id="checkHalfDay" onchange="toggleHalfDay(this.checked);" />
+                                    <label class="form-check-label fw-semibold small text-dark" for="checkHalfDay">Apply Half Day Leave</label>
+                                </div>
+                                <div id="halfDaySessionDiv" style="display: @(Model.IsHalfDay ? "inline-flex" : "none");" class="align-items-center gap-2">
+                                    <label class="small text-muted mb-0">Session:</label>
+                                    <select asp-for="HalfDaySession" class="form-select form-select-sm py-0" style="width: 140px;" onchange="triggerDurationCalc();">
+                                        <option value="FirstHalf">First Half (AM)</option>
+                                        <option value="SecondHalf">Second Half (PM)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- From Date -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-dark mb-1">Start Date <span class="text-danger">*</span></label>
+                            <input asp-for="FromDate" type="date" class="form-control" id="fromDateInput" required onchange="onFromDateChange();" />
+                            <span asp-validation-for="FromDate" class="text-danger small"></span>
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="col-md-6" id="toDateCol">
+                            <label class="form-label fw-semibold small text-dark mb-1">End Date <span class="text-danger">*</span></label>
+                            <input asp-for="ToDate" type="date" class="form-control" id="toDateInput" required onchange="triggerDurationCalc();" />
+                            <span asp-validation-for="ToDate" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Automated Calculation Breakdown Banner -->
+                        <div class="col-12">
+                            <div class="p-3 rounded-2 border" id="calcBanner" style="background-color: #f0fdfa; border-color: #ccfbf1 !important;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="text-teal fw-bold" style="color:#0f766e; font-size: 0.95rem;">
+                                            <i class="bi bi-calculator me-1"></i> Calculated Chargeable Leave: <span id="spanTotalDays">1.0</span> Day(s)
+                                        </div>
+                                        <div class="text-muted small" id="spanBreakdown" style="font-size: 0.78rem;">
+                                            Evaluating applicable holidays and weekly offs...
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-white text-teal border px-2 py-1 font-monospace" id="spanBadgeDays">1.0 Day</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reason -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-dark mb-1">Reason for Leave <span class="text-danger">*</span></label>
+                            <textarea asp-for="Reason" class="form-control" rows="3" placeholder="State reason for absence..." required></textarea>
+                            <span asp-validation-for="Reason" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Supporting Document -->
+                        <div class="col-12" id="docUploadCol">
+                            <label class="form-label fw-semibold small text-dark mb-1">
+                                Supporting Document <span id="docReqStar" class="text-danger d-none">*</span>
+                            </label>
+                            <input asp-for="SupportingDocument" type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" />
+                            <div class="form-text" style="font-size:0.75rem;">Medical certificate or supporting proof (PDF, JPG, PNG &le; 5MB).</div>
+                            <span asp-validation-for="SupportingDocument" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-hrms-teal px-4 fw-semibold shadow-sm">
+                                <i class="bi bi-send-fill me-1"></i> Submit Application
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleHalfDay(checked) {
+        document.getElementById('halfDaySessionDiv').style.display = checked ? 'inline-flex' : 'none';
+        const toDateCol = document.getElementById('toDateCol');
+        if (checked) {
+            toDateCol.style.opacity = '0.5';
+            toDateCol.style.pointerEvents = 'none';
+            document.getElementById('toDateInput').value = document.getElementById('fromDateInput').value;
+        } else {
+            toDateCol.style.opacity = '1';
+            toDateCol.style.pointerEvents = 'auto';
+        }
+        triggerDurationCalc();
+    }
+
+    function onFromDateChange() {
+        if (document.getElementById('checkHalfDay').checked) {
+            document.getElementById('toDateInput').value = document.getElementById('fromDateInput').value;
+        }
+        triggerDurationCalc();
+    }
+
+    function onLeaveTypeChange() {
+        const select = document.getElementById('leaveTypeSelect');
+        const selectedOpt = select.options[select.selectedIndex];
+        const reqDoc = selectedOpt?.getAttribute('data-requires-doc') === 'true';
+        document.getElementById('docReqStar').classList.toggle('d-none', !reqDoc);
+        triggerDurationCalc();
+    }
+
+    async function triggerDurationCalc() {
+        const fromDate = document.getElementById('fromDateInput').value;
+        const toDate = document.getElementById('toDateInput').value;
+        const leaveTypeId = document.getElementById('leaveTypeSelect').value;
+        const empId = document.getElementById('empSelect').value;
+        const isHalfDay = document.getElementById('checkHalfDay').checked;
+        const halfDaySession = document.getElementById('HalfDaySession')?.value;
+
+        if (!fromDate || !toDate || !leaveTypeId) return;
+
+        try {
+            const url = `/LeaveApplication/CalculateDuration?fromDate=${fromDate}&toDate=${toDate}&leaveTypeId=${leaveTypeId}&employeeId=${empId}&isHalfDay=${isHalfDay}&halfDaySession=${halfDaySession}`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('spanTotalDays').textContent = data.totalDays;
+                document.getElementById('spanBadgeDays').textContent = `${data.totalDays} Day(s)`;
+                document.getElementById('spanBreakdown').textContent = data.breakdownSummary;
+            }
+        } catch (e) {
+            console.error('Calculation failed', e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        triggerDurationCalc();
+    });
+</script>
+}
+

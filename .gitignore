@@ -1,0 +1,28 @@
+## .NET build artifacts
+[Bb]in/
+[Oo]bj/
+publish/
+[Dd]ebug/
+[Rr]elease/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+
+## Visual Studio Code
+.vscode/
+
+## Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+## Logs and temporary files
+*.log
+*.tmp

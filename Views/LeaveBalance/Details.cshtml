@@ -1,0 +1,181 @@
+@model IReadOnlyList<HRMS.Models.EmployeeLeaveBalanceModel>
+@{
+    var employee = ViewBag.Employee as HRMS.Models.EmployeeModel;
+    string deptName = ViewBag.DepartmentName as string ?? "General";
+    int finYear = ViewBag.FinancialYear ?? DateTime.Today.Year;
+    var leaveTypes = ViewBag.LeaveTypes as Dictionary<string, HRMS.Models.LeaveTypeModel> ?? new Dictionary<string, HRMS.Models.LeaveTypeModel>();
+    var transactions = ViewBag.Transactions as IReadOnlyList<HRMS.Models.LeaveTransactionModel> ?? new List<HRMS.Models.LeaveTransactionModel>();
+
+    ViewData["Title"] = $"Leave Balances — {employee?.FullName}";
+}
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Employee Leave Ledger</h4>
+        <div class="text-muted small">
+            <strong>@employee?.FullName</strong> (@employee?.EmployeeNo) &bull; Department: <strong>@deptName</strong> &bull; Financial Year: <strong>@finYear</strong>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-hrms-teal btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#adjustModal">
+            <i class="bi bi-sliders me-1"></i> Adjust Balance
+        </button>
+        <a asp-action="Index" asp-route-year="@finYear" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Balances
+        </a>
+    </div>
+</div>
+
+<!-- Balance Cards Breakdown -->
+<div class="row g-3 mb-4">
+    @foreach (var b in Model)
+    {
+        leaveTypes.TryGetValue(b.LeaveTypeId, out var lt);
+        string code = lt?.LeaveCode ?? b.LeaveTypeId;
+        string name = lt?.LeaveName ?? code;
+
+        <div class="col-md-4">
+            <div class="card border shadow-sm rounded-3 h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-light text-teal border fw-bold fs-6">@code</span>
+                        <span class="text-muted small">@name</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-baseline mb-3">
+                        <span class="text-muted small">Available Balance</span>
+                        <span class="fs-4 fw-bold font-monospace @(b.AvailableBalance >= 0 ? "text-dark" : "text-danger")">
+                            @b.AvailableBalance <small class="fs-6 fw-normal text-muted">Days</small>
+                        </span>
+                    </div>
+                    <div class="row g-1 text-center border-top pt-2" style="font-size: 0.75rem;">
+                        <div class="col-3">
+                            <div class="text-muted">Opening</div>
+                            <div class="fw-semibold">@b.OpeningBalance</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="text-muted">Accrued</div>
+                            <div class="fw-semibold text-success">+@b.Accrued</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="text-muted">Used</div>
+                            <div class="fw-semibold text-danger">-@b.Used</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="text-muted">Reserved</div>
+                            <div class="fw-semibold text-warning">-@b.Reserved</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Transaction Audit Ledger Table -->
+<div class="card border shadow-sm rounded-3 overflow-hidden mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history text-teal me-2" style="color:#0d9488;"></i> Leave Transaction Audit Trail</h6>
+        <span class="badge bg-light text-secondary border">@transactions.Count Record(s)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table hrms-table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Leave Type</th>
+                    <th>Transaction Type</th>
+                    <th>Quantity</th>
+                    <th>Reference</th>
+                    <th>Remarks</th>
+                    <th>Created By</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (transactions.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <div>No transaction records logged yet for this employee.</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var t in transactions)
+                    {
+                        leaveTypes.TryGetValue(t.LeaveTypeId, out var lt);
+                        string tBadge = t.TransactionType switch
+                        {
+                            "OpeningBalance" => "bg-info-subtle text-info-emphasis border",
+                            "Accrual" => "bg-success-subtle text-success border border-success-subtle",
+                            "LeaveReserved" => "bg-warning-subtle text-warning-emphasis border",
+                            "LeaveConsumed" => "bg-danger-subtle text-danger border border-danger-subtle",
+                            "LeaveReleased" => "bg-primary-subtle text-primary border",
+                            "Adjustment" => "bg-purple-subtle text-purple border",
+                            _ => "bg-light text-dark border"
+                        };
+
+                        <tr>
+                            <td class="small font-monospace">@t.TransactionDate.ToString("dd MMM yyyy, hh:mm tt")</td>
+                            <td><span class="badge bg-light text-teal border fw-semibold">@(lt?.LeaveCode ?? t.LeaveTypeId)</span></td>
+                            <td><span class="badge @tBadge px-2 py-1">@t.TransactionType</span></td>
+                            <td class="font-monospace fw-bold">@t.Quantity Day(s)</td>
+                            <td class="small text-muted font-monospace">@t.Reference</td>
+                            <td class="small">@t.Remarks</td>
+                            <td class="small text-secondary"><i class="bi bi-person me-1"></i>@t.CreatedBy</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Adjust Balance Modal -->
+<div class="modal fade" id="adjustModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Adjust">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="employeeId" value="@employee?.EmployeeId" />
+                <input type="hidden" name="year" value="@finYear" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-dark">Adjust Leave Balance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Manually credit or debit leave days. This action will be permanently recorded in the transaction audit trail.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Leave Type <span class="text-danger">*</span></label>
+                        <select name="leaveTypeId" class="form-select" required>
+                            @foreach (var b in Model)
+                            {
+                                leaveTypes.TryGetValue(b.LeaveTypeId, out var lt);
+                                <option value="@b.LeaveTypeId">@(lt?.LeaveName ?? b.LeaveTypeId) (@(lt?.LeaveCode ?? b.LeaveTypeId)) — Current: @b.AvailableBalance Days</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Adjustment Quantity (Days) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.5" name="amount" class="form-control" placeholder="e.g. 2.0 to add or -1.5 to deduct" required />
+                        <div class="form-text" style="font-size:0.75rem;">Use positive numbers to add days, or negative numbers to deduct days.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Reason / Authorization Notes <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="Reason for adjustment (e.g. comp-off credit, HR policy exception)..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-hrms-teal btn-sm fw-semibold">Save Adjustment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

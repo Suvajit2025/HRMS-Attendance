@@ -1,0 +1,444 @@
+@model HRMS.Models.DashboardModel
+@{
+    ViewData["Title"] = "Workforce Dashboard";
+}
+
+<!-- Dashboard Header Controls -->
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Industrial Workforce Dashboard</h4>
+        <div class="text-muted small">Live plant operations & attendance analytics for <strong>@Model.SelectedDate.ToString("dddd, dd MMMM yyyy")</strong></div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Date Selector -->
+        <input type="date" id="dashDateInput" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" class="form-control form-control-sm" style="width: 145px;" />
+
+        <!-- Department Filter -->
+        <select id="dashDeptSelect" class="form-select form-select-sm" style="width: 160px;">
+            <option value="">All Departments</option>
+            @if (ViewBag.Departments is IEnumerable<HRMS.Models.DepartmentModel> depts)
+            {
+                foreach (var dept in depts)
+                {
+                    <option value="@dept.DepartmentId" selected="@(string.Equals(Model.SelectedDepartmentId, dept.DepartmentId, StringComparison.OrdinalIgnoreCase))">
+                        @dept.DepartmentName
+                    </option>
+                }
+            }
+        </select>
+
+        <!-- Manual Refresh -->
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnManualRefresh" title="Refresh Live Data">
+            <i class="bi bi-arrow-repeat"></i> <span class="d-none d-sm-inline">Refresh</span>
+        </button>
+
+        <!-- Export CSV -->
+        <a asp-action="ExportTodayCsv" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-departmentId="@Model.SelectedDepartmentId" class="btn btn-outline-secondary btn-sm" title="Export Daily Attendance CSV">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> <span class="d-none d-sm-inline">Export CSV</span>
+        </a>
+    </div>
+</div>
+
+<!-- 6 KPI Metric Cards -->
+<div class="row g-2 g-sm-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-teal">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiTotal">@Model.TotalEmployees</div>
+                <div class="kpi-label">Total Active</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-green">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiPresent">@Model.PresentToday</div>
+                <div class="kpi-label">Present Today</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-red">
+                <i class="bi bi-person-x-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiAbsent">@Model.AbsentToday</div>
+                <div class="kpi-label">Absent Today</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-blue">
+                <i class="bi bi-door-open-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiInside">@Model.CurrentlyInside</div>
+                <div class="kpi-label">Inside Plant</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-amber">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiLate">@Model.LateArrivals</div>
+                <div class="kpi-label">Late Arrivals</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-purple">
+                <i class="bi bi-pie-chart-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="kpiPercent">@Model.AttendancePercentage%</div>
+                <div class="kpi-label">Turnout Rate</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts & Live Feed Section -->
+<div class="row g-4 mb-4">
+    <!-- Chart 1: Doughnut Present vs Absent -->
+    <div class="col-lg-4">
+        <div class="hrms-card h-100">
+            <div class="hrms-card-header">
+                <h6 class="hrms-card-title"><i class="bi bi-pie-chart text-teal" style="color:#0d9488;"></i> Present vs Absent</h6>
+            </div>
+            <div class="hrms-card-body d-flex flex-column align-items-center justify-content-center p-3">
+                <div style="width: 220px; height: 220px; position: relative;">
+                    <canvas id="presentAbsentDoughnutChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-center gap-4 mt-3 small fw-semibold">
+                    <div><span class="badge rounded-circle p-1 me-1" style="background-color: #0d9488;">&nbsp;</span> Present: <span id="legPresent">@Model.PresentToday</span></div>
+                    <div><span class="badge rounded-circle p-1 me-1" style="background-color: #ef4444;">&nbsp;</span> Absent: <span id="legAbsent">@Model.AbsentToday</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: 7-Day Attendance Trend -->
+    <div class="col-lg-4">
+        <div class="hrms-card h-100">
+            <div class="hrms-card-header">
+                <h6 class="hrms-card-title"><i class="bi bi-graph-up text-teal" style="color:#0d9488;"></i> 7-Day Attendance Trend</h6>
+            </div>
+            <div class="hrms-card-body p-3">
+                <div style="height: 250px;">
+                    <canvas id="trendLineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 3: Department-wise Bar Chart -->
+    <div class="col-lg-4">
+        <div class="hrms-card h-100">
+            <div class="hrms-card-header">
+                <h6 class="hrms-card-title"><i class="bi bi-bar-chart-fill text-teal" style="color:#0d9488;"></i> Department Breakdown</h6>
+            </div>
+            <div class="hrms-card-body p-3">
+                <div style="height: 250px;">
+                    <canvas id="deptBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Section: Today's Attendance Table & Live Stream -->
+<div class="row g-4 mb-4">
+    <!-- Today's Workforce Muster Roll -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar2-check text-teal me-2" style="color:#0d9488;"></i> Today's Workforce Attendance Status</h6>
+                <div class="d-flex gap-2">
+                    <input type="text" id="tableFilterInput" class="form-control form-control-sm" placeholder="Quick search..." style="width: 170px;" />
+                </div>
+            </div>
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <table class="table hrms-table table-hover align-middle mb-0" id="attendanceMainTable">
+                    <thead class="sticky-top bg-light">
+                        <tr>
+                            <th style="width: 50px;">Photo</th>
+                            <th>EMP No</th>
+                            <th>Employee Name</th>
+                            <th>Department</th>
+                            <th>First IN</th>
+                            <th>Last OUT</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        @if (Model.TodayAttendanceRecords.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">No records found.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var row in Model.TodayAttendanceRecords)
+                            {
+                                <tr class="att-row" data-search="@($"{row.EmployeeNo} {row.EmployeeName} {row.DepartmentName}".ToLowerInvariant())">
+                                    <td>
+                                        <img src="@(string.IsNullOrEmpty(row.PhotoPath) ? "/images/avatar-default.png" : row.PhotoPath)"
+                                             alt="@row.EmployeeName"
+                                             class="rounded-circle border"
+                                             style="width: 38px; height: 38px; object-fit: cover;" />
+                                    </td>
+                                    <td><span class="fw-bold font-monospace">@row.EmployeeNo</span></td>
+                                    <td>
+                                        <a asp-controller="Employee" asp-action="Details" asp-route-id="@row.EmployeeId" class="fw-bold text-dark text-decoration-none">
+                                            @row.EmployeeName
+                                        </a>
+                                    </td>
+                                    <td><span class="badge bg-light text-dark border">@(row.DepartmentName ?? "Unassigned")</span></td>
+                                    <td class="font-monospace small">@(row.FirstInTime.HasValue ? row.FirstInTime.Value.ToString("hh:mm tt") : "--")</td>
+                                    <td class="font-monospace small">@(row.LastOutTime.HasValue ? row.LastOutTime.Value.ToString("hh:mm tt") : "--")</td>
+                                    <td class="font-monospace text-muted small">@row.WorkingHoursFormatted</td>
+                                    <td><span class="badge @row.StatusBadgeClass px-2 py-1">@row.AttendanceStatus</span></td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Attendance Punch Stream -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history text-teal me-2" style="color:#0d9488;"></i> Live Gate Activity</h6>
+                <span class="badge bg-light text-muted border small" id="autoRefreshBadge">Auto: 30s</span>
+            </div>
+            <div class="card-body p-3" id="liveActivityFeed" style="max-height: 480px; overflow-y: auto;">
+                @if (Model.RecentActivities.Count == 0)
+                {
+                    <div class="text-center py-4 text-muted small">No punch activity recorded for this date.</div>
+                }
+                else
+                {
+                    @foreach (var act in Model.RecentActivities)
+                    {
+                        <div class="d-flex align-items-center justify-content-between p-2 mb-2 rounded border bg-light shadow-2xs">
+                            <div class="d-flex align-items-center">
+                                <img src="@(string.IsNullOrEmpty(act.PhotoPath) ? "/images/avatar-default.png" : act.PhotoPath)"
+                                     alt="@act.EmployeeName"
+                                     class="rounded-circle border me-2"
+                                     style="width: 38px; height: 38px; object-fit: cover;" />
+                                <div>
+                                    <div class="fw-bold text-dark small">@act.EmployeeName</div>
+                                    <div class="text-muted font-monospace" style="font-size: 0.72rem;">@act.EmployeeNo &bull; @act.PunchTime.ToString("hh:mm:ss tt")</div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge @(act.PunchType == "IN" ? "bg-success" : "bg-warning text-dark") px-2 py-1">
+                                    @act.PunchType
+                                </span>
+                                @if (act.MatchScore.HasValue)
+                                {
+                                    <div class="text-muted font-monospace" style="font-size: 0.65rem;">@((int)(act.MatchScore.Value * 100))% match</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('dashDateInput');
+            const deptSelect = document.getElementById('dashDeptSelect');
+            const btnRefresh = document.getElementById('btnManualRefresh');
+            const tableFilter = document.getElementById('tableFilterInput');
+
+            // Quick table filter
+            tableFilter.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                document.querySelectorAll('.att-row').forEach(row => {
+                    const searchData = row.getAttribute('data-search') || '';
+                    row.style.display = searchData.includes(query) ? '' : 'none';
+                });
+            });
+
+            // Filters change -> reload with params
+            function applyFilters() {
+                const date = dateInput.value;
+                const dept = deptSelect.value;
+                window.location.href = `/Dashboard?date=${encodeURIComponent(date)}&departmentId=${encodeURIComponent(dept)}`;
+            }
+
+            dateInput.addEventListener('change', applyFilters);
+            deptSelect.addEventListener('change', applyFilters);
+            btnRefresh.addEventListener('click', applyFilters);
+
+            // Chart 1: Doughnut Present vs Absent
+            const doughnutCtx = document.getElementById('presentAbsentDoughnutChart');
+            const presentCount = @Model.PresentToday;
+            const absentCount = @Model.AbsentToday;
+
+            const doughnutChart = new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        data: [presentCount, absentCount],
+                        backgroundColor: ['#0d9488', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Chart 2: 7-Day Trend
+            const trendCtx = document.getElementById('trendLineChart');
+            const trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last7DaysTrends.Select(t => t.DateFormatted)));
+            const trendPresent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last7DaysTrends.Select(t => t.PresentCount)));
+            const trendLate = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Last7DaysTrends.Select(t => t.LateCount)));
+
+            const trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: trendPresent,
+                            borderColor: '#0d9488',
+                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5
+                        },
+                        {
+                            label: 'Late',
+                            data: trendLate,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Chart 3: Department-wise Bar Chart
+            const deptCtx = document.getElementById('deptBarChart');
+            const deptNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DepartmentStats.Select(d => d.DepartmentName)));
+            const deptPresentData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DepartmentStats.Select(d => d.PresentCount)));
+            const deptAbsentData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DepartmentStats.Select(d => d.AbsentCount)));
+
+            const deptChart = new Chart(deptCtx, {
+                type: 'bar',
+                data: {
+                    labels: deptNames,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: deptPresentData,
+                            backgroundColor: '#0d9488',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Absent',
+                            data: deptAbsentData,
+                            backgroundColor: '#cbd5e1',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Auto-refresh stats every 30 seconds
+            let refreshCountdown = 30;
+            const badgeEl = document.getElementById('autoRefreshBadge');
+
+            setInterval(async () => {
+                refreshCountdown--;
+                if (badgeEl) badgeEl.innerText = `Auto: ${refreshCountdown}s`;
+
+                if (refreshCountdown <= 0) {
+                    refreshCountdown = 30;
+                    try {
+                        const date = dateInput.value;
+                        const dept = deptSelect.value;
+                        const res = await fetch(`/Dashboard/GetLiveStats?date=${encodeURIComponent(date)}&departmentId=${encodeURIComponent(dept)}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            document.getElementById('kpiTotal').innerText = data.totalEmployees;
+                            document.getElementById('kpiPresent').innerText = data.presentToday;
+                            document.getElementById('kpiAbsent').innerText = data.absentToday;
+                            document.getElementById('kpiInside').innerText = data.currentlyInside;
+                            document.getElementById('kpiLate').innerText = data.lateArrivals;
+                            document.getElementById('kpiPercent').innerText = `${data.attendancePercentage}%`;
+                            document.getElementById('legPresent').innerText = data.presentToday;
+                            document.getElementById('legAbsent').innerText = data.absentToday;
+
+                            // Update doughnut
+                            doughnutChart.data.datasets[0].data = [data.presentToday, data.absentToday];
+                            doughnutChart.update();
+                        }
+                    } catch (err) {
+                        console.warn('Dashboard auto-refresh error:', err);
+                    }
+                }
+            }, 1000);
+        });
+    </script>
+}
+

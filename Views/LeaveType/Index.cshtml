@@ -1,0 +1,113 @@
+@model IReadOnlyList<HRMS.Models.LeaveTypeModel>
+@{
+    ViewData["Title"] = "Leave Types";
+}
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-tag-fill text-teal me-2" style="color:#0d9488;"></i> Leave Type Master
+        </h4>
+        <div class="text-muted small">Configure statutory and corporate leave categories (CL, SL, EL, PL, LWP, CO)</div>
+    </div>
+    <a asp-action="Create" class="btn btn-hrms-teal btn-sm px-3 d-flex align-items-center gap-1 shadow-sm">
+        <i class="bi bi-plus-circle-fill"></i> Add Leave Type
+    </a>
+</div>
+
+<!-- Table Card -->
+<div class="card border shadow-sm rounded-3 overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table class="table hrms-table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th style="width: 100px;">Code</th>
+                    <th>Leave Name</th>
+                    <th>Classification</th>
+                    <th>Half Day</th>
+                    <th>Carry Forward</th>
+                    <th>Document Req.</th>
+                    <th>Status</th>
+                    <th class="text-end" style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="fw-bold font-monospace text-teal" style="color:#0d9488;">
+                            @item.LeaveCode
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">@item.LeaveName</div>
+                            @if (!string.IsNullOrEmpty(item.Description))
+                            {
+                                <div class="text-muted small" style="font-size:0.75rem;">@item.Description</div>
+                            }
+                        </td>
+                        <td>
+                            @if (item.IsPaidLeave)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="bi bi-currency-dollar me-1"></i> Paid
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary border">Unpaid (LOP)</span>
+                            }
+                        </td>
+                        <td>
+                            @(item.IsHalfDayAllowed ? "Allowed" : "No")
+                        </td>
+                        <td>
+                            @if (item.IsCarryForwardAllowed)
+                            {
+                                <span class="badge bg-info-subtle text-info-emphasis border">Max @item.MaximumCarryForward days</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.RequiresDocument)
+                            {
+                                <span class="badge bg-warning-subtle text-warning-emphasis border">Required</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Optional</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Edit" asp-route-id="@item.LeaveTypeId" class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@item.LeaveTypeId" method="post" class="d-inline" onsubmit="return confirm('Delete leave type @item.LeaveName?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+

@@ -1,0 +1,51 @@
+@model HRMS.Models.DepartmentModel
+@{
+    ViewData["Title"] = "Add Department";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Create New Department</h4>
+        <div class="text-muted small">Register an operational division for employee allocation</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Back to Departments
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="DepartmentName" class="form-label fw-semibold small text-muted">Department Name</label>
+                        <input asp-for="DepartmentName" class="form-control" placeholder="e.g. Quality Assurance" required />
+                        <span asp-validation-for="DepartmentName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label fw-semibold small text-muted">Description (Optional)</label>
+                        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Operational responsibilities..."></textarea>
+                    </div>
+
+                    <div class="mb-4 form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label fw-semibold small">Active Department</label>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="Index" class="btn btn-light border">Cancel</a>
+                        <button type="submit" class="btn btn-hrms-teal fw-bold">
+                            <i class="bi bi-check-lg me-1"></i> Save Department
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

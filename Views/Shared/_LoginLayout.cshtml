@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d9488" />
+    <title>@ViewData["Title"] — HRMS Workforce Management</title>
+    <link rel="manifest" href="~/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="~/icons/app-icon.svg" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/hrms-theme.css" asp-append-version="true" />
+    <style>
+        body {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .login-card-container {
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+        }
+        .login-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .login-header {
+            background-color: #ffffff;
+            color: #1e293b;
+            padding: 2rem 1.75rem 1.25rem 1.75rem;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .login-body {
+            padding: 1.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card-container">
+        <div class="login-card">
+            @RenderBody()
+        </div>
+        <div class="text-center mt-3 text-muted small" style="font-size: 0.78rem;">
+            HRMS Workforce Management &bull; Local Standalone System
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

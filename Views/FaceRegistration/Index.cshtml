@@ -1,0 +1,417 @@
+@model HRMS.ViewModels.FaceRegistrationViewModel
+@{
+    ViewData["Title"] = "Face Template Enrollment";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Biometric Face Registration</h4>
+        <div class="text-muted small">Enroll facial recognition templates for industrial kiosk attendance</div>
+    </div>
+</div>
+
+<!-- Prototype Security Notice Alert -->
+<div class="alert alert-info border-0 shadow-sm d-flex align-items-start p-3 mb-4 rounded-3" style="background-color: #f0fdfa; border-left: 4px solid #0d9488 !important;">
+    <i class="bi bi-shield-exclamation text-teal fs-4 me-3 mt-1" style="color: #0d9488;"></i>
+    <div>
+        <div class="fw-bold text-dark mb-1">Local Face Recognition Engine — Prototype Demonstration</div>
+        <div class="small text-secondary">
+            @Model.ModelInfo
+            <br />
+            <strong>Security Notice:</strong> Local face matching computes L2-normalized spatial frequency feature vectors. For unattended industrial deployment, an optical 3D IR depth sensor is recommended to guard against printed photograph or digital screen presentation spoofing.
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-teal">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number">@Model.TotalEmployees</div>
+                <div class="kpi-label">Active Employees</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-green">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="statEnrolledCount">@Model.EnrolledCount</div>
+                <div class="kpi-label">Face Templates Enrolled</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-amber">
+                <i class="bi bi-person-exclamation"></i>
+            </div>
+            <div>
+                <div class="kpi-number" id="statPendingCount">@Model.PendingCount</div>
+                <div class="kpi-label">Pending Enrollment</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Employee Selection List -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-list-check text-teal me-2" style="color:#0d9488;"></i> Workforce Personnel</h6>
+                <span class="small text-muted">Select an employee to enroll</span>
+            </div>
+            <div class="card-body p-2" style="max-height: 540px; overflow-y: auto;">
+                <div class="list-group list-group-flush" id="employeeSelectList">
+                    @foreach (var emp in Model.Employees)
+                    {
+                        <div class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 border-bottom rounded-2 mb-1 employee-select-item"
+                             data-id="@emp.EmployeeId"
+                             data-no="@emp.EmployeeNo"
+                             data-name="@emp.FullName"
+                             data-dept="@emp.DepartmentName"
+                             data-photo="@(string.IsNullOrEmpty(emp.PhotoPath) ? "/images/avatar-default.png" : emp.PhotoPath)"
+                             data-enrolled="@emp.HasFaceTemplate.ToString().ToLower()"
+                             style="cursor: pointer;">
+                            <div class="d-flex align-items-center">
+                                <img src="@(string.IsNullOrEmpty(emp.PhotoPath) ? "/images/avatar-default.png" : emp.PhotoPath)"
+                                     alt="@emp.FullName"
+                                     class="rounded-circle border me-3"
+                                     style="width: 44px; height: 44px; object-fit: cover;" />
+                                <div>
+                                    <div class="fw-bold text-dark">@emp.FullName</div>
+                                    <div class="small text-muted font-monospace">@emp.EmployeeNo &bull; @emp.DepartmentName</div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                @if (emp.HasFaceTemplate)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Enrolled
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                        Pending
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Enrollment Terminal -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-camera-video text-teal me-2" style="color:#0d9488;"></i> Live Face Enrollment</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnRestartEnrollCamera">
+                    <i class="bi bi-arrow-clockwise"></i> Restart Camera
+                </button>
+            </div>
+            <div class="card-body p-4 text-center">
+                <!-- Selected Employee Banner -->
+                <div id="enrollmentEmployeeBanner" class="p-3 bg-light rounded-3 border mb-3 text-start d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <img id="bannerEmpPhoto" src="/images/avatar-default.png" class="rounded-circle border me-3" style="width: 48px; height: 48px; object-fit: cover;" />
+                        <div>
+                            <div class="fw-bold fs-6 text-dark" id="bannerEmpName">Please select an employee</div>
+                            <div class="small text-muted font-monospace" id="bannerEmpSub">Select from the list on the left to activate camera</div>
+                        </div>
+                    </div>
+                    <div id="bannerEmpStatusBadge"></div>
+                </div>
+
+                <!-- Video / Snapshot Viewport -->
+                <div class="camera-feed-container mb-3 position-relative" style="max-width: 420px; height: 320px; margin: 0 auto;">
+                    <video id="enrollmentVideo" autoplay playsinline muted class="camera-feed-video" style="height: 320px;"></video>
+                    
+                    <!-- Fallback Photo Preview if uploaded from disk -->
+                    <img id="enrollmentPhotoPreview" src="" alt="Selected Photo" class="d-none w-100 h-100 rounded-3" style="object-fit: cover; position: absolute; top:0; left:0; z-index: 5;" />
+
+                    <div class="face-target-guide" id="enrollFaceGuide" style="width: 190px; height: 230px;">
+                        <div class="face-scan-line"></div>
+                    </div>
+                </div>
+
+                <div id="enrollmentStatus" class="fw-semibold small text-muted mb-3" style="min-height: 24px;">
+                    Camera idle. Select an employee to begin.
+                </div>
+
+                <!-- Dual Action Controls: Live Webcam Capture OR Local Photo Upload -->
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-2">
+                    <button type="button" class="btn btn-hrms-teal px-4 fw-bold shadow-sm" id="btnCaptureAndEnroll" disabled>
+                        <i class="bi bi-camera me-1"></i> Capture & Enroll Face
+                    </button>
+
+                    <button type="button" class="btn btn-outline-teal fw-semibold d-none" id="btnUseProfilePhoto">
+                        <i class="bi bi-person-check me-1"></i> Use Profile Photo
+                    </button>
+
+                    <label class="btn btn-outline-secondary fw-semibold">
+                        <i class="bi bi-upload me-1"></i> Upload Photo File
+                        <input type="file" id="enrollFileInput" class="d-none" accept="image/jpeg,image/png,image/webp" />
+                    </label>
+
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnDeleteTemplate" style="display:none;">
+                        <i class="bi bi-trash me-1"></i> Remove Template
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btnClearEnrollPhoto">
+                        <i class="bi bi-x-circle me-1"></i> Use Camera
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let selectedEmployeeId = null;
+            let isEnrolled = false;
+            let uploadedPhotoBase64 = null;
+
+            const bannerName = document.getElementById('bannerEmpName');
+            const bannerSub = document.getElementById('bannerEmpSub');
+            const bannerPhoto = document.getElementById('bannerEmpPhoto');
+            const bannerBadge = document.getElementById('bannerEmpStatusBadge');
+            const btnEnroll = document.getElementById('btnCaptureAndEnroll');
+            const btnDelete = document.getElementById('btnDeleteTemplate');
+            const statusEl = document.getElementById('enrollmentStatus');
+            const fileInput = document.getElementById('enrollFileInput');
+            const photoPreview = document.getElementById('enrollmentPhotoPreview');
+            const btnClearPhoto = document.getElementById('btnClearEnrollPhoto');
+            const faceGuide = document.getElementById('enrollFaceGuide');
+            const btnRestart = document.getElementById('btnRestartEnrollCamera');
+
+            const btnProfilePhoto = document.getElementById('btnUseProfilePhoto');
+
+            // Select Employee Function
+            async function selectEmployee(item) {
+                document.querySelectorAll('.employee-select-item').forEach(el => el.classList.remove('bg-light', 'border-teal'));
+                item.classList.add('bg-light');
+
+                selectedEmployeeId = item.getAttribute('data-id');
+                const no = item.getAttribute('data-no');
+                const name = item.getAttribute('data-name');
+                const dept = item.getAttribute('data-dept');
+                const photo = item.getAttribute('data-photo');
+                isEnrolled = item.getAttribute('data-enrolled') === 'true';
+
+                bannerName.innerText = name;
+                bannerSub.innerText = `${no} • ${dept}`;
+                bannerPhoto.src = photo;
+
+                if (photo && !photo.includes('avatar-default')) {
+                    btnProfilePhoto.classList.remove('d-none');
+                } else {
+                    btnProfilePhoto.classList.add('d-none');
+                }
+
+                if (isEnrolled) {
+                    bannerBadge.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle">Enrolled</span>`;
+                    btnDelete.style.display = 'inline-block';
+                    btnEnroll.innerHTML = `<i class="bi bi-arrow-repeat me-1"></i> Re-Enroll Face`;
+                } else {
+                    bannerBadge.innerHTML = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>`;
+                    btnDelete.style.display = 'none';
+                    btnEnroll.innerHTML = `<i class="bi bi-camera me-1"></i> Capture & Enroll Face`;
+                }
+
+                btnEnroll.disabled = false;
+
+                if (!uploadedPhotoBase64) {
+                    await startEnrollCamera();
+                }
+            }
+
+            if (btnProfilePhoto) {
+                btnProfilePhoto.addEventListener('click', async () => {
+                    if (!selectedEmployeeId) return;
+                    btnProfilePhoto.disabled = true;
+                    btnProfilePhoto.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Enrolling...';
+                    statusEl.innerHTML = '<span class="text-info"><i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i> Registering face from profile photo...</span>';
+
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+                    const formData = new FormData();
+                    formData.append('employeeId', selectedEmployeeId);
+
+                    try {
+                        const res = await fetch('/FaceRegistration/EnrollFromProfilePhoto', {
+                            method: 'POST',
+                            headers: { 'RequestVerificationToken': token },
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            HRMS.showNotification(data.message, 'success');
+                            statusEl.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> ${data.message}</span>`;
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            alert(data.message || 'Error enrolling from photo');
+                            btnProfilePhoto.disabled = false;
+                            btnProfilePhoto.innerHTML = '<i class="bi bi-person-check me-1"></i> Use Profile Photo';
+                            statusEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle-fill"></i> ${data.message}</span>`;
+                        }
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                        btnProfilePhoto.disabled = false;
+                        btnProfilePhoto.innerHTML = '<i class="bi bi-person-check me-1"></i> Use Profile Photo';
+                    }
+                });
+            }
+
+            async function startEnrollCamera() {
+                statusEl.innerHTML = `<span class="text-primary"><i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i> Starting camera feed...</span>`;
+
+                const stream = await HRMS.startCamera('enrollmentVideo', (err) => {
+                    statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${err}</span>
+                        <div class="mt-1 small text-muted">You can enroll this employee using <strong>Upload Photo File</strong>.</div>`;
+                });
+
+                if (stream) {
+                    statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Camera active. Look directly at the camera and click Enroll.</span>`;
+                }
+            }
+
+            // Click listener for list items
+            document.querySelectorAll('.employee-select-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    selectEmployee(this);
+                });
+            });
+
+            // Auto-select first employee on page load
+            const firstEmp = document.querySelector('.employee-select-item');
+            if (firstEmp) {
+                selectEmployee(firstEmp);
+            }
+
+            btnRestart.addEventListener('click', async () => {
+                clearUploadedPhoto();
+                await startEnrollCamera();
+            });
+
+            // File upload fallback
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const base64 = await HRMS.fileToBase64(file);
+                    uploadedPhotoBase64 = base64;
+                    photoPreview.src = base64;
+                    photoPreview.classList.remove('d-none');
+                    btnClearPhoto.classList.remove('d-none');
+                    faceGuide.classList.add('d-none');
+                    btnEnroll.disabled = !selectedEmployeeId;
+                    btnEnroll.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Enroll Uploaded Photo`;
+                    statusEl.innerHTML = `<span class="text-primary fw-bold"><i class="bi bi-image"></i> Photo loaded (${file.name}). Click Enroll to register.</span>`;
+                } catch (err) {
+                    alert('Error reading photo: ' + err.message);
+                }
+            });
+
+            function clearUploadedPhoto() {
+                uploadedPhotoBase64 = null;
+                fileInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.add('d-none');
+                btnClearPhoto.classList.add('d-none');
+                faceGuide.classList.remove('d-none');
+                btnEnroll.innerHTML = isEnrolled ? `<i class="bi bi-arrow-repeat me-1"></i> Re-Enroll Face` : `<i class="bi bi-camera me-1"></i> Capture & Enroll Face`;
+                statusEl.innerText = 'Position face within the guide and click Enroll.';
+            }
+
+            btnClearPhoto.addEventListener('click', clearUploadedPhoto);
+
+            // Capture and enroll
+            btnEnroll.addEventListener('click', async () => {
+                if (!selectedEmployeeId) {
+                    alert('Please select an employee first.');
+                    return;
+                }
+
+                let base64 = uploadedPhotoBase64;
+                if (!base64) {
+                    base64 = HRMS.captureFrameAsBase64('enrollmentVideo');
+                }
+
+                if (!base64) {
+                    statusEl.innerHTML = `<span class="text-danger">Unable to grab video frame. Please ensure camera is active or use "Upload Photo File".</span>`;
+                    return;
+                }
+
+                btnEnroll.disabled = true;
+                statusEl.innerHTML = `<span class="text-info"><i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i> Processing face detection & vector extraction...</span>`;
+
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                try {
+                    const res = await fetch('/FaceRegistration/Enroll', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            employeeId: selectedEmployeeId,
+                            imageBase64: base64
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        statusEl.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> ${data.message}</span>`;
+                        HRMS.showNotification('Face enrolled successfully!', 'success');
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        statusEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle-fill"></i> ${data.message}</span>`;
+                        btnEnroll.disabled = false;
+                    }
+                } catch (err) {
+                    statusEl.innerHTML = `<span class="text-danger">Error: ${err.message}</span>`;
+                    btnEnroll.disabled = false;
+                }
+            });
+
+            // Delete template
+            btnDelete.addEventListener('click', async () => {
+                if (!selectedEmployeeId || !confirm('Are you sure you want to remove the face template for this employee?')) return;
+
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+                const formData = new FormData();
+                formData.append('employeeId', selectedEmployeeId);
+
+                const res = await fetch('/FaceRegistration/Delete', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token },
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    HRMS.showNotification('Template removed.', 'info');
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error deleting template');
+                }
+            });
+        });
+    </script>
+}

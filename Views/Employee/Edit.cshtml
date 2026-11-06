@@ -1,0 +1,85 @@
+@model HRMS.ViewModels.EmployeeEditViewModel
+@{
+    ViewData["Title"] = $"Edit Employee — {Model.EmployeeNo}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Update Employee Record</h4>
+        <div class="text-muted small">Modify profile and official details for @Model.EmployeeNo</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Details" asp-route-id="@Model.EmployeeId" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-eye me-1"></i> View Details
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Directory
+        </a>
+    </div>
+</div>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data" id="employeeForm">
+    <partial name="_EmployeeForm" model="Model" />
+
+    <div class="d-flex justify-content-end gap-2 mt-3 mb-5">
+        <a asp-action="Index" class="btn btn-light border px-4">Cancel</a>
+        <button type="submit" class="btn btn-hrms-teal px-4 fw-bold shadow-sm">
+            <i class="bi bi-check-lg me-1"></i> Save Changes
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('photoFileInput');
+            const previewImg = document.getElementById('photoPreviewImg');
+            const cameraInput = document.getElementById('cameraPhotoBase64Input');
+            const cameraModal = document.getElementById('cameraCaptureModal');
+            const btnSnapshot = document.getElementById('btnTakeSnapshot');
+            const cameraStatus = document.getElementById('cameraStatusText');
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        previewImg.src = evt.target.result;
+                        cameraInput.value = '';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            cameraModal.addEventListener('shown.bs.modal', async () => {
+                cameraStatus.innerText = 'Initializing camera feed...';
+                const stream = await HRMS.startCamera('employeeCameraVideo', (err) => {
+                    cameraStatus.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${err}</span>`;
+                });
+                if (stream) {
+                    cameraStatus.innerText = 'Position face inside the oval and click Capture.';
+                }
+            });
+
+            cameraModal.addEventListener('hidden.bs.modal', () => {
+                HRMS.stopCamera();
+            });
+
+            btnSnapshot.addEventListener('click', () => {
+                const base64 = HRMS.captureFrameAsBase64('employeeCameraVideo');
+                if (base64) {
+                    previewImg.src = base64;
+                    cameraInput.value = base64;
+                    fileInput.value = '';
+                    const modal = bootstrap.Modal.getInstance(cameraModal);
+                    modal.hide();
+                    HRMS.showNotification('Photograph updated from camera snapshot!', 'success');
+                } else {
+                    cameraStatus.innerHTML = '<span class="text-danger">Unable to grab video frame.</span>';
+                }
+            });
+        });
+    </script>
+}
+

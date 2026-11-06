@@ -1,0 +1,400 @@
+@model HRMS.ViewModels.AttendanceTerminalViewModel
+@{
+    ViewData["Title"] = "Attendance Kiosk Terminal";
+}
+
+@Html.AntiForgeryToken()
+
+<!-- Compact Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-camera-video-fill text-teal me-2" style="color:#0d9488;"></i> Industrial Attendance Terminal
+        </h5>
+        <div class="text-muted small" style="font-size: 0.75rem;">@Model.CompanyName &bull; Shift Start: <strong>@Model.ShiftStartTime</strong></div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Daily" class="btn btn-outline-secondary btn-sm py-1 px-2 small">
+            <i class="bi bi-calendar-check me-1"></i> Today's Sheet
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left Column: Unified Camera & Compact Controls (No Scroll) -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-2">
+            <!-- Header status strip -->
+            <div class="card-header bg-light border-bottom py-2 px-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span id="cameraStatusDot" class="spinner-grow spinner-grow-sm text-teal" style="color: #0d9488;" role="status"></span>
+                    <span class="fw-bold font-monospace small text-dark" id="cameraStatusLabel" style="font-size: 0.75rem;">INITIALIZING CAMERA...</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnRestartCamera" title="Restart camera feed" style="font-size: 0.72rem;">
+                        <i class="bi bi-arrow-clockwise"></i> Restart
+                    </button>
+                    <span class="badge bg-secondary font-monospace" id="terminalLiveTime" style="font-size: 0.72rem;">--:--:--</span>
+                </div>
+            </div>
+
+            <div class="card-body p-3 text-center">
+                <!-- Video / Snapshot Screen (Height optimized to 270px) -->
+                <div class="camera-feed-container mb-2 position-relative" style="height: 270px; max-width: 440px; margin: 0 auto;">
+                    <video id="terminalVideo" autoplay playsinline muted class="camera-feed-video" style="height: 270px;"></video>
+                    
+                    <!-- Fallback Photo Preview if uploaded from disk -->
+                    <img id="terminalPhotoPreview" src="" alt="Selected Face" class="d-none w-100 h-100 rounded-3" style="object-fit: cover; position: absolute; top:0; left:0; z-index: 5;" />
+
+                    <div class="face-target-guide" id="faceTargetGuide" style="width: 165px; height: 200px;">
+                        <div class="face-scan-line"></div>
+                    </div>
+
+                    <!-- Overlay for Success/Error Notification -->
+                    <div id="punchOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center p-3 text-white" style="background: rgba(15, 23, 42, 0.94); z-index: 20;">
+                        <div id="overlayIconWrap" class="mb-2"></div>
+                        <h5 id="overlayTitle" class="fw-bold mb-1"></h5>
+                        <div id="overlaySubtitle" class="fs-6 mb-1 text-teal" style="color: #2dd4bf;"></div>
+                        <div id="overlayMessage" class="small px-3 text-light text-center mb-2"></div>
+                        <button type="button" class="btn btn-sm btn-outline-light px-3 py-1" id="btnCloseOverlay">Dismiss</button>
+                    </div>
+                </div>
+
+                <!-- Status Prompt -->
+                <div id="terminalStatusPrompt" class="fw-semibold text-secondary mb-2 small" style="min-height: 18px; font-size: 0.78rem;">
+                    Align face inside the frame and tap Punch IN or OUT.
+                </div>
+
+                <!-- Compact Single-Section Toolbar: Logo-Only Small Buttons -->
+                <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
+                    <button type="button" class="btn btn-success btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" id="btnTerminalPunchIn" title="Punch IN (Arrival)" style="width: 42px; height: 42px;">
+                        <i class="bi bi-box-arrow-in-right fs-5"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-warning btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center text-dark" id="btnTerminalPunchOut" title="Punch OUT (Departure)" style="width: 42px; height: 42px;">
+                        <i class="bi bi-box-arrow-right fs-5"></i>
+                    </button>
+
+                    <label class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mb-0" title="Upload Face Photo" style="width: 42px; height: 42px; cursor: pointer;">
+                        <i class="bi bi-camera fs-5"></i>
+                        <input type="file" id="terminalPhotoInput" class="d-none" accept="image/jpeg,image/png,image/webp" capture="user" />
+                    </label>
+
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-none align-items-center justify-content-center" id="btnClearPhoto" title="Use Live Camera" style="width: 42px; height: 42px;">
+                        <i class="bi bi-x-lg fs-5"></i>
+                    </button>
+                </div>
+
+                <!-- Compact Inline Manual Fallback Mode -->
+                <div class="p-2 bg-light rounded-2 border d-flex flex-wrap align-items-center gap-2 text-start">
+                    <span class="small text-muted fw-semibold text-nowrap" style="font-size: 0.75rem;">
+                        <i class="bi bi-person-fill"></i> Manual:
+                    </span>
+                    <select id="manualEmployeeSelect" class="form-select form-select-sm py-1 flex-grow-1" style="font-size: 0.78rem; min-width: 130px;">
+                        <option value="">-- Choose Employee --</option>
+                        @foreach (var emp in Model.RegisteredEmployees)
+                        {
+                            <option value="@emp.EmployeeId">@emp.EmployeeNo — @emp.FullName</option>
+                        }
+                    </select>
+                    <div class="d-flex gap-1 ms-auto">
+                        <button type="button" class="btn btn-sm btn-outline-success p-1 px-2 text-nowrap" id="btnManualIn" title="Manual Punch IN">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> IN
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark p-1 px-2 text-nowrap" id="btnManualOut" title="Manual Punch OUT">
+                            <i class="bi bi-box-arrow-right me-1"></i> OUT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Terminal Feed (Fits side-by-side without scrolling) -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark small"><i class="bi bi-activity text-teal me-1" style="color:#0d9488;"></i> Live Gate Feed</h6>
+                <span class="badge bg-light text-dark border font-monospace" id="terminalPunchCount" style="font-size: 0.72rem;">@Model.TodayPunchesCount punches</span>
+            </div>
+            <div class="card-body p-2" id="terminalFeedContainer" style="height: 385px; overflow-y: auto;">
+                @if (Model.RecentTerminalActivity.Count == 0)
+                {
+                    <div class="text-center py-5 text-muted" id="emptyFeedNotice">
+                        <i class="bi bi-clock-history fs-2 d-block mb-1 text-muted"></i>
+                        <div class="small">No punches recorded today yet.</div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var act in Model.RecentTerminalActivity)
+                    {
+                        <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded-2 border bg-light">
+                            <div class="d-flex align-items-center">
+                                <img src="@(string.IsNullOrEmpty(act.PhotoPath) ? "/images/avatar-default.png" : act.PhotoPath)"
+                                     alt="@act.EmployeeName"
+                                     class="rounded-circle border me-2"
+                                     style="width: 36px; height: 36px; object-fit: cover;" />
+                                <div>
+                                    <div class="fw-bold text-dark small" style="font-size: 0.8rem;">@act.EmployeeName</div>
+                                    <div class="text-muted font-monospace" style="font-size: 0.7rem;">
+                                        @act.EmployeeNo &bull; @act.PunchTime.ToString("hh:mm:ss tt")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge @(act.PunchType == "IN" ? "bg-success" : "bg-warning text-dark") px-2 py-1" style="font-size: 0.7rem;">
+                                    @act.PunchType
+                                </span>
+                                @if (act.IsLate)
+                                {
+                                    <div class="badge bg-danger-subtle text-danger" style="font-size: 0.6rem;">Late</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const videoId = 'terminalVideo';
+            const statusEl = document.getElementById('terminalStatusPrompt');
+            const statusLabel = document.getElementById('cameraStatusLabel');
+            const statusDot = document.getElementById('cameraStatusDot');
+            const overlay = document.getElementById('punchOverlay');
+            const overlayIcon = document.getElementById('overlayIconWrap');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlaySub = document.getElementById('overlaySubtitle');
+            const overlayMsg = document.getElementById('overlayMessage');
+            const btnCloseOverlay = document.getElementById('btnCloseOverlay');
+            const feedContainer = document.getElementById('terminalFeedContainer');
+            const terminalClock = document.getElementById('terminalLiveTime');
+            const photoInput = document.getElementById('terminalPhotoInput');
+            const photoPreview = document.getElementById('terminalPhotoPreview');
+            const btnClearPhoto = document.getElementById('btnClearPhoto');
+            const faceGuide = document.getElementById('faceTargetGuide');
+            const btnRestart = document.getElementById('btnRestartCamera');
+
+            let currentPhotoBase64 = null;
+
+            // Live Clock in terminal header
+            setInterval(() => {
+                const now = new Date();
+                terminalClock.innerText = now.toLocaleTimeString('en-US', { hour12: true });
+            }, 1000);
+
+            // Initialize camera
+            async function initCamera() {
+                statusLabel.innerText = 'INITIALIZING CAMERA...';
+                statusDot.className = 'spinner-grow spinner-grow-sm text-teal';
+                statusEl.innerHTML = `<span class="text-primary"><i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i> Starting camera feed...</span>`;
+                
+                const stream = await HRMS.startCamera(videoId, (err) => {
+                    statusLabel.innerText = 'CAMERA OFFLINE';
+                    statusDot.className = 'spinner-grow spinner-grow-sm text-danger';
+                    statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Camera offline</span>`;
+                });
+
+                if (stream) {
+                    statusLabel.innerText = 'CAMERA ACTIVE';
+                    statusDot.className = 'spinner-grow spinner-grow-sm text-success';
+                    statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Terminal ready. Align face & tap button.</span>`;
+                }
+            }
+
+            await initCamera();
+
+            btnRestart.addEventListener('click', async () => {
+                clearUploadedPhoto();
+                await initCamera();
+            });
+
+            // Handle file upload fallback
+            photoInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const base64 = await HRMS.fileToBase64(file);
+                    currentPhotoBase64 = base64;
+                    photoPreview.src = base64;
+                    photoPreview.classList.remove('d-none');
+                    btnClearPhoto.classList.remove('d-none');
+                    btnClearPhoto.classList.add('d-flex');
+                    faceGuide.classList.add('d-none');
+                    statusLabel.innerText = 'PHOTO LOADED';
+                    statusDot.className = 'spinner-grow spinner-grow-sm text-primary';
+                    statusEl.innerHTML = `<span class="text-primary fw-bold"><i class="bi bi-image"></i> Photo ready. Tap Punch IN or OUT.</span>`;
+                } catch (err) {
+                    alert('Error reading photo: ' + err.message);
+                }
+            });
+
+            function clearUploadedPhoto() {
+                currentPhotoBase64 = null;
+                photoInput.value = '';
+                photoPreview.src = '';
+                photoPreview.classList.add('d-none');
+                btnClearPhoto.classList.add('d-none');
+                btnClearPhoto.classList.remove('d-flex');
+                faceGuide.classList.remove('d-none');
+                statusLabel.innerText = 'CAMERA ACTIVE';
+                statusDot.className = 'spinner-grow spinner-grow-sm text-success';
+                statusEl.innerText = 'Align face inside the frame and tap Punch IN or OUT.';
+            }
+
+            btnClearPhoto.addEventListener('click', clearUploadedPhoto);
+
+            btnCloseOverlay.addEventListener('click', () => {
+                overlay.classList.add('d-none');
+                overlay.classList.remove('d-flex');
+            });
+
+            function showResult(success, title, subtitle, message) {
+                overlay.classList.remove('d-none');
+                overlay.classList.add('d-flex');
+
+                if (success) {
+                    overlayIcon.innerHTML = `<div class="rounded-circle bg-success text-white p-2 d-inline-flex shadow"><i class="bi bi-check-lg fs-2"></i></div>`;
+                    overlayTitle.className = 'fw-bold mb-1 text-success';
+                } else {
+                    overlayIcon.innerHTML = `<div class="rounded-circle bg-danger text-white p-2 d-inline-flex shadow"><i class="bi bi-x-lg fs-2"></i></div>`;
+                    overlayTitle.className = 'fw-bold mb-1 text-danger';
+                }
+
+                overlayTitle.innerText = title;
+                overlaySub.innerText = subtitle || '';
+                overlayMsg.innerText = message;
+
+                // Auto dismiss after 3.5 seconds
+                setTimeout(() => {
+                    overlay.classList.add('d-none');
+                    overlay.classList.remove('d-flex');
+                }, 3500);
+            }
+
+            async function submitFacePunch(punchType) {
+                let base64 = currentPhotoBase64;
+                if (!base64) {
+                    base64 = HRMS.captureFrameAsBase64(videoId);
+                }
+
+                if (!base64) {
+                    showResult(false, 'Capture Failed', 'Camera Unavailable', 'Unable to capture live frame from camera. Please allow camera permissions or upload a photo.');
+                    return;
+                }
+
+                statusEl.innerHTML = `<span class="text-info"><i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i> Recording ${punchType}...</span>`;
+
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                try {
+                    const res = await fetch('/Attendance/FacePunch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            imageBase64: base64,
+                            punchType: punchType
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        showResult(true, `PUNCH ${punchType} RECORDED`, `${data.employeeName} [${data.employeeNo}]`, data.message);
+                        statusEl.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> ${data.message}</span>`;
+                        prependFeedItem(data);
+                    } else {
+                        showResult(false, `PUNCH ${punchType} REJECTED`, data.employeeName ? `${data.employeeName} [${data.employeeNo}]` : 'Authentication Failed', data.message);
+                        statusEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-x-circle-fill"></i> ${data.message}</span>`;
+                    }
+                } catch (err) {
+                    showResult(false, 'Network Error', '', err.message);
+                    statusEl.innerText = 'Connection error. Please try again.';
+                }
+            }
+
+            async function submitManualPunch(punchType) {
+                const empId = document.getElementById('manualEmployeeSelect').value;
+                if (!empId) {
+                    alert('Please select an employee for manual punch.');
+                    return;
+                }
+
+                // Capture live camera frame or photo snapshot during manual punch
+                let base64 = currentPhotoBase64;
+                if (!base64) {
+                    base64 = HRMS.captureFrameAsBase64(videoId);
+                }
+
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                try {
+                    const res = await fetch('/Attendance/ProcessPunch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            employeeId: empId,
+                            punchType: punchType,
+                            verificationMethod: 'Manual',
+                            capturedPhotoBase64: base64
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        showResult(true, `MANUAL PUNCH ${punchType} RECORDED`, `${data.employeeName} [${data.employeeNo}]`, data.message);
+                        prependFeedItem(data);
+                    } else {
+                        showResult(false, `MANUAL PUNCH ${punchType} REJECTED`, '', data.message);
+                    }
+                } catch (err) {
+                    showResult(false, 'Error', '', err.message);
+                }
+            }
+
+            function prependFeedItem(item) {
+                const emptyNotice = document.getElementById('emptyFeedNotice');
+                if (emptyNotice) emptyNotice.remove();
+
+                const div = document.createElement('div');
+                div.className = 'd-flex align-items-center justify-content-between p-2 mb-1 rounded-2 border bg-light shadow-2xs';
+                div.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <img src="${item.photoPath || '/images/avatar-default.png'}" class="rounded-circle border me-2" style="width: 36px; height: 36px; object-fit: cover;" />
+                        <div>
+                            <div class="fw-bold text-dark small" style="font-size: 0.8rem;">${item.employeeName}</div>
+                            <div class="text-muted font-monospace" style="font-size: 0.7rem;">${item.employeeNo} &bull; ${item.punchTimeFormatted}</div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge ${item.punchType === 'IN' ? 'bg-success' : 'bg-warning text-dark'} px-2 py-1" style="font-size: 0.7rem;">${item.punchType}</span>
+                        ${item.isLate ? '<div class="badge bg-danger-subtle text-danger" style="font-size: 0.6rem;">Late</div>' : ''}
+                    </div>
+                `;
+                feedContainer.prepend(div);
+
+                const countEl = document.getElementById('terminalPunchCount');
+                if (countEl) {
+                    const currentCount = parseInt(countEl.innerText) || 0;
+                    countEl.innerText = `${currentCount + 1} punches`;
+                }
+            }
+
+            document.getElementById('btnTerminalPunchIn').addEventListener('click', () => submitFacePunch('IN'));
+            document.getElementById('btnTerminalPunchOut').addEventListener('click', () => submitFacePunch('OUT'));
+            document.getElementById('btnManualIn').addEventListener('click', () => submitManualPunch('IN'));
+            document.getElementById('btnManualOut').addEventListener('click', () => submitManualPunch('OUT'));
+        });
+    </script>
+}

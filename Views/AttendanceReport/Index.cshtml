@@ -1,0 +1,531 @@
+@model HRMS.ViewModels.MonthlyAttendanceReportViewModel
+@{
+    ViewData["Title"] = "Monthly Attendance Report";
+    int currentYear = DateTime.Today.Year;
+}
+
+<div class="container-fluid px-3 py-3 report-page">
+    <!-- Header Section (Screen + Print Friendly) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom report-header-area">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-teal-subtle text-teal border px-2 py-1 fw-semibold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Official Workforce Register
+                </span>
+                <span class="text-muted small">| @Model.BusinessName</span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark mt-1" style="font-size: 1.45rem;">
+                Monthly Employee Attendance Report
+            </h3>
+            <div class="text-secondary small mt-1">
+                <span class="fw-semibold text-dark"><i class="bi bi-calendar3 me-1"></i>Period: @Model.MonthName</span>
+                <span class="mx-2">•</span>
+                <span><i class="bi bi-person-check me-1"></i>Prepared By: <strong>@Model.PreparedBy</strong></span>
+                <span class="mx-2">•</span>
+                <span><i class="bi bi-clock me-1"></i>Generated: @Model.GeneratedDate.ToString("dd MMM yyyy, hh:mm tt")</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons (Hidden when printing) -->
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0 no-print">
+            <button type="button" class="btn btn-outline-secondary btn-sm px-3 shadow-sm d-flex align-items-center gap-1" onclick="window.print();">
+                <i class="bi bi-printer-fill text-dark"></i>
+                <span class="fw-semibold">Print Report</span>
+            </button>
+            <a asp-action="DownloadExcel"
+               asp-route-Month="@Model.Filter.Month"
+               asp-route-Year="@Model.Filter.Year"
+               asp-route-DepartmentId="@Model.Filter.DepartmentId"
+               asp-route-SearchTerm="@Model.Filter.SearchTerm"
+               asp-route-StatusFilter="@Model.Filter.StatusFilter"
+               class="btn btn-teal btn-sm px-3 shadow-sm d-flex align-items-center gap-1 text-white"
+               style="background-color: #0f766e;"
+               title="Download formatted Excel workbook based on IC-Employee-Attendance template">
+                <i class="bi bi-file-earmark-excel-fill"></i>
+                <span class="fw-semibold">Download Excel</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters Card (Hidden in Print) -->
+    <div class="card border shadow-sm mb-3 report-filter-card no-print">
+        <div class="card-body py-2 px-3">
+            <form method="get" asp-action="Index" id="reportFilterForm" class="row g-2 align-items-end">
+                <div class="col-6 col-sm-4 col-md-2">
+                    <label class="form-label small fw-semibold text-muted mb-1">Month</label>
+                    <select name="Month" class="form-select form-select-sm" onchange="this.form.submit();">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            var dt = new DateTime(2026, m, 1);
+                            <option value="@m" selected="@(m == Model.Filter.Month)">@dt.ToString("MMMM")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-4 col-md-1">
+                    <label class="form-label small fw-semibold text-muted mb-1">Year</label>
+                    <select name="Year" class="form-select form-select-sm" onchange="this.form.submit();">
+                        @for (int y = currentYear - 3; y <= currentYear + 1; y++)
+                        {
+                            <option value="@y" selected="@(y == Model.Filter.Year)">@y</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">Department</label>
+                    <select name="DepartmentId" class="form-select form-select-sm" onchange="this.form.submit();">
+                        <option value="">All Departments</option>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <option value="@dept.DepartmentId" selected="@(dept.DepartmentId == Model.Filter.DepartmentId)">
+                                @dept.DepartmentName
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-6 col-md-2">
+                    <label class="form-label small fw-semibold text-muted mb-1">Status Filter</label>
+                    <select name="StatusFilter" class="form-select form-select-sm" onchange="this.form.submit();">
+                        <option value="All" selected="@(string.IsNullOrEmpty(Model.Filter.StatusFilter) || Model.Filter.StatusFilter == "All")">All Attendance</option>
+                        <option value="Present" selected="@(Model.Filter.StatusFilter == "Present")">Present (P) Only</option>
+                        <option value="Absent" selected="@(Model.Filter.StatusFilter == "Absent")">Absent (A) Only</option>
+                        <option value="Holiday" selected="@(Model.Filter.StatusFilter == "Holiday")">Sunday Holiday (H) Only</option>
+                    </select>
+                </div>
+                <div class="col-6 col-sm-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">Employee Search</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="SearchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Name or Emp No..." />
+                        <button type="submit" class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3" style="height: 31px;" title="Apply Filter">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary KPI Cards (Present, Absent, Sunday Holiday, Attendance %) -->
+    <div class="row g-2 mb-3 kpi-summary-row">
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border shadow-none bg-white p-2 h-100 kpi-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Total Employees</div>
+                        <div class="fs-4 fw-bold text-dark">@Model.Summary.TotalEmployees</div>
+                    </div>
+                    <div class="kpi-icon bg-light text-secondary rounded p-2">
+                        <i class="bi bi-people fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border shadow-none bg-white p-2 h-100 kpi-card border-start-success">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-success small fw-semibold">Present Days (P)</div>
+                        <div class="fs-4 fw-bold text-success">@Model.Summary.TotalPresentDays</div>
+                    </div>
+                    <div class="kpi-icon bg-success-subtle text-success rounded p-2">
+                        <i class="bi bi-check2-circle fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border shadow-none bg-white p-2 h-100 kpi-card border-start-danger">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-danger small fw-semibold">Absent Days (A)</div>
+                        <div class="fs-4 fw-bold text-danger">@Model.Summary.TotalAbsentDays</div>
+                    </div>
+                    <div class="kpi-icon bg-danger-subtle text-danger rounded p-2">
+                        <i class="bi bi-x-circle fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border shadow-none bg-white p-2 h-100 kpi-card border-start-secondary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-secondary small fw-semibold">Sunday Holidays (H)</div>
+                        <div class="fs-4 fw-bold text-secondary">@Model.Summary.TotalHolidayDays</div>
+                    </div>
+                    <div class="kpi-icon bg-light text-secondary rounded p-2">
+                        <i class="bi bi-sun fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4 col-xl">
+            <div class="card border shadow-none bg-white p-2 h-100 kpi-card border-start-teal">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-teal small fw-semibold">Avg Attendance %</div>
+                        <div class="fs-4 fw-bold text-teal">@Model.Summary.AverageAttendancePercentage.ToString("0.0")%</div>
+                    </div>
+                    <div class="kpi-icon bg-teal-subtle text-teal rounded p-2">
+                        <i class="bi bi-graph-up-arrow fs-5"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Status Codes Legend Bar (Present P, Absent A, Holiday H) -->
+    <div class="card border shadow-none bg-white mb-3 attendance-legend-card">
+        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold small text-dark"><i class="bi bi-info-circle me-1"></i>ATTENDANCE LEGEND:</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="d-flex align-items-center gap-1">
+                    <span class="att-code-badge code-p">P</span>
+                    <span class="small fw-semibold text-secondary">Present</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <span class="att-code-badge code-a">A</span>
+                    <span class="small fw-semibold text-secondary">Absent</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <span class="att-code-badge code-h">H</span>
+                    <span class="small fw-semibold text-secondary">Sunday Holiday</span>
+                </div>
+                <div class="d-flex align-items-center gap-1 text-muted">
+                    <span class="att-code-empty border px-2 py-0">-</span>
+                    <span class="small">Blank (Before Joining Date / Future Date)</span>
+                </div>
+            </div>
+            <div class="text-muted small d-none d-xl-block">
+                <span>Calculation: <em>Present / Total Marked Days &times; 100</em></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Matrix Table Partial -->
+    <div id="attendanceMatrixContainer">
+        <partial name="_AttendanceReportTable" model="Model" />
+    </div>
+</div>
+
+<style>
+    /* Styling variables and matrix aesthetics */
+    .bg-teal-subtle { background-color: #f0fdfa !important; }
+    .text-teal { color: #0f766e !important; }
+    .border-start-teal { border-left: 4px solid #0f766e !important; }
+    .border-start-success { border-left: 4px solid #16a34a !important; }
+    .border-start-danger { border-left: 4px solid #dc2626 !important; }
+    .border-start-secondary { border-left: 4px solid #64748b !important; }
+
+    /* Code Badges: P (Present - Green), A (Absent - Red), H (Holiday - Grey) */
+    .att-code-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        user-select: none;
+    }
+    .att-code-empty {
+        display: inline-block;
+        color: #cbd5e1;
+        font-size: 0.75rem;
+    }
+    .code-p { background-color: #d1e7dd; color: #0f5132; }
+    .code-a { background-color: #f8d7da; color: #842029; }
+    .code-h { background-color: #e9ecef; color: #495057; }
+
+    .code-p-val { color: #0f5132; }
+    .code-a-val { color: #842029; }
+    .code-h-val { color: #495057; }
+    .code-u-val { color: #432874; }
+    .code-n-val { color: #842029; }
+    .code-h-val { color: #495057; }
+
+    /* Matrix Table Layout & Sticky Columns */
+    .attendance-matrix-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.82rem;
+        width: 100%;
+        min-width: 1400px;
+    }
+    
+    /* Strongly Highlighted Row Lines and Cell Gridlines */
+    .attendance-matrix-table th,
+    .attendance-matrix-table td {
+        border-right: 1px solid #cbd5e1 !important;
+        border-bottom: 2px solid #94a3b8 !important; /* Prominent horizontal line for every single row */
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .matrix-header-row th {
+        background-color: #0f766e;
+        color: #ffffff;
+        vertical-align: middle;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 3px solid #0d5c58 !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.25) !important;
+    }
+    .weekend-col-header {
+        background-color: #134e4a !important;
+        color: #99f6e4 !important;
+    }
+    .sticky-col-header {
+        position: sticky !important;
+        left: 0;
+        top: 0;
+        z-index: 15 !important;
+        background-color: #0f766e !important;
+    }
+    .sticky-col-empno {
+        position: sticky !important;
+        left: 230px;
+        z-index: 8 !important;
+        background-color: #ffffff;
+        border-right: 3px solid #0f766e !important; /* Highlighted vertical divider between employee and days */
+        box-shadow: 3px 0 6px rgba(0,0,0,0.06);
+    }
+    .matrix-header-row .sticky-col-empno {
+        top: 0;
+        background-color: #0f766e !important;
+        color: #fff !important;
+        z-index: 15 !important;
+        border-right: 3px solid #0d5c58 !important;
+    }
+    .sticky-col {
+        position: sticky !important;
+        left: 0;
+        z-index: 9 !important;
+        background-color: #ffffff;
+    }
+
+    /* Mobile Responsive Optimizations for Attendance Matrix */
+    @@media (max-width: 767.98px) {
+        .sticky-col-header, .sticky-col {
+            min-width: 130px !important;
+            width: 130px !important;
+            max-width: 130px !important;
+            font-size: 0.76rem !important;
+            padding: 4px 6px !important;
+        }
+        .sticky-col-empno {
+            position: static !important;
+            box-shadow: none !important;
+            border-right: 1px solid #e2e8f0 !important;
+            min-width: 65px !important;
+            width: 65px !important;
+        }
+        .matrix-header-row .sticky-col-empno {
+            position: static !important;
+        }
+        .matrix-scroll-wrapper {
+            max-height: 55vh;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+        }
+        .att-code-badge {
+            width: 20px;
+            height: 20px;
+            font-size: 0.65rem;
+        }
+    }
+    .weekend-cell {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* Alternating Rows & High-Contrast Highlight on Row Hover */
+    .employee-matrix-row:nth-child(even) td {
+        background-color: #f8fafc;
+    }
+    .employee-matrix-row:nth-child(even) .sticky-col,
+    .employee-matrix-row:nth-child(even) .sticky-col-empno {
+        background-color: #f1f5f9;
+    }
+    .employee-matrix-row:hover td,
+    .employee-matrix-row:hover .sticky-col,
+    .employee-matrix-row:hover .sticky-col-empno {
+        background-color: #e0f2fe !important; /* Crisp Sky Blue highlight on row hover */
+        color: #0f172a;
+    }
+
+    /* Summary column vertical divider */
+    .code-y-header,
+    .attendance-matrix-table td.code-y-val {
+        border-left: 3px solid #0f766e !important; /* Prominent divider before totals */
+    }
+
+    .matrix-footer-row td {
+        background-color: #e2e8f0 !important;
+        position: sticky;
+        bottom: 0;
+        z-index: 11;
+        border-top: 3px solid #0f766e !important;
+        border-bottom: 2px solid #64748b !important;
+    }
+    .matrix-footer-row .sticky-col,
+    .matrix-footer-row .sticky-col-empno {
+        background-color: #cbd5e1 !important;
+        z-index: 13 !important;
+    }
+
+    /* Scroll Wrapper Styling */
+    .matrix-scroll-wrapper {
+        scrollbar-width: thin;
+        scrollbar-color: #0d9488 #e2e8f0;
+    }
+    .matrix-scroll-wrapper::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+    .matrix-scroll-wrapper::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 6px;
+    }
+    .matrix-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: #0d9488;
+        border-radius: 6px;
+        border: 2px solid #f1f5f9;
+    }
+    .matrix-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #0f766e;
+    }
+
+    /* Print Stylesheet for direct HTML landscape printing */
+    @@media print {
+        @@page {
+            size: landscape;
+            margin: 8mm 6mm;
+        }
+        body {
+            background-color: #ffffff !important;
+            font-size: 8pt !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        /* Hide all UI Chrome */
+        .hrms-sidebar,
+        .sidebar-backdrop,
+        .hrms-topbar,
+        .no-print,
+        .report-filter-card,
+        footer {
+            display: none !important;
+        }
+        .hrms-main-content,
+        .hrms-wrapper,
+        .report-page {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+        }
+        .report-header-area {
+            border-bottom: 2px solid #000 !important;
+            margin-bottom: 6px !important;
+            padding-bottom: 4px !important;
+        }
+        .kpi-summary-row {
+            margin-bottom: 6px !important;
+        }
+        .kpi-card {
+            border: 1px solid #ccc !important;
+            padding: 4px 6px !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+        .attendance-matrix-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 7pt !important;
+            page-break-inside: auto;
+        }
+        .attendance-matrix-table th,
+        .attendance-matrix-table td {
+            padding: 2px 1px !important;
+            border: 1px solid #666 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .matrix-header-row th {
+            background-color: #0f766e !important;
+            color: #ffffff !important;
+        }
+        .sticky-col, .sticky-col-empno, .sticky-col-header {
+            position: static !important;
+            box-shadow: none !important;
+        }
+        thead {
+            display: table-header-group !important;
+        }
+        tr {
+            page-break-inside: avoid !important;
+        }
+        .att-code-badge {
+            width: 16px !important;
+            height: 16px !important;
+            font-size: 6.5pt !important;
+            border: 1px solid #888 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+</style>
+
+@section Scripts {
+<script>
+    function scrollMatrix(delta) {
+        const el = document.getElementById('matrixScrollWrapper');
+        if (el) {
+            el.scrollBy({ left: delta, behavior: 'smooth' });
+        }
+    }
+
+    function scrollMatrixTo(pos) {
+        const el = document.getElementById('matrixScrollWrapper');
+        if (el) {
+            el.scrollTo({ left: pos, behavior: 'smooth' });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('matrixScrollWrapper');
+        if (!el) return;
+
+        // Mouse Drag-to-Scroll support for ultra-intuitive panning
+        let isDown = false;
+        let startX, scrollLeft;
+
+        el.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button, select, input, a, .form-select, .form-control')) return;
+            isDown = true;
+            el.style.cursor = 'grabbing';
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDown = false;
+            if (el) el.style.cursor = 'default';
+        });
+
+        el.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - el.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            el.scrollLeft = scrollLeft - walk;
+        });
+    });
+</script>
+}
+

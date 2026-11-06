@@ -1,0 +1,166 @@
+@model HRMS.ViewModels.EmployeeEditViewModel
+
+@Html.AntiForgeryToken()
+@if (!Model.IsNew)
+{
+    <input type="hidden" asp-for="EmployeeId" />
+}
+<input type="hidden" asp-for="ExistingPhotoPath" />
+<input type="hidden" asp-for="CameraPhotoBase64" id="cameraPhotoBase64Input" />
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger small mb-4" role="alert"></div>
+
+<div class="row g-4">
+    <!-- Left Column: Primary Details -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-person-lines-fill text-teal me-2" style="color:#0d9488;"></i> Identity & Official Information</h6>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="EmployeeNo" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="EmployeeNo" class="form-control text-uppercase bg-light fw-bold font-monospace" readonly required />
+                        <span asp-validation-for="EmployeeNo" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DepartmentId" class="form-label fw-semibold small text-muted"></label>
+                        <select asp-for="DepartmentId" class="form-select">
+                            <option value="">-- Select Department --</option>
+                            @foreach (var dept in Model.Departments)
+                            {
+                                <option value="@dept.DepartmentId">@dept.DepartmentName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="DepartmentId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="FirstName" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="FirstName" class="form-control" placeholder="First name" required />
+                        <span asp-validation-for="FirstName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="MiddleName" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="MiddleName" class="form-control" placeholder="Middle name (optional)" />
+                        <span asp-validation-for="MiddleName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="LastName" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="LastName" class="form-control" placeholder="Last name" required />
+                        <span asp-validation-for="LastName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="DOB" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="DOB" class="form-control" type="date" required />
+                        <span asp-validation-for="DOB" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="JoiningDate" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="JoiningDate" class="form-control" type="date" required />
+                        <span asp-validation-for="JoiningDate" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Gender" class="form-label fw-semibold small text-muted"></label>
+                        <select asp-for="Gender" class="form-select">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span asp-validation-for="Gender" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNo" class="form-label fw-semibold small text-muted"></label>
+                        <input asp-for="PhoneNo" class="form-control" placeholder="+91 98765 43210" />
+                        <span asp-validation-for="PhoneNo" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="AadhaarNo" class="form-label fw-semibold small text-muted"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-card-text"></i></span>
+                            <input asp-for="AadhaarNo" class="form-control" placeholder="12-digit numeric Aadhaar number" maxlength="12" pattern="\d{12}" required />
+                        </div>
+                        <div class="form-text small text-muted">
+                            <i class="bi bi-shield-lock text-success me-1"></i> Aadhaar numbers are securely masked in the employee directory and reports.
+                        </div>
+                        <span asp-validation-for="AadhaarNo" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        <div class="form-check form-switch">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label fw-semibold small">Active Employee Status</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Photograph & Camera Capture -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-camera text-teal me-2" style="color:#0d9488;"></i> Employee Photograph</h6>
+            </div>
+            <div class="card-body p-4 text-center">
+                <div class="mb-3">
+                    <img id="photoPreviewImg"
+                         src="@(string.IsNullOrEmpty(Model.ExistingPhotoPath) ? "/images/avatar-default.png" : Model.ExistingPhotoPath)"
+                         alt="Employee Photo Preview"
+                         class="rounded-3 shadow-sm border"
+                         style="width: 150px; height: 180px; object-fit: cover;" />
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnOpenCameraModal" data-bs-toggle="modal" data-bs-target="#cameraCaptureModal">
+                        <i class="bi bi-webcam me-1"></i> Capture from Camera
+                    </button>
+
+                    <label class="btn btn-sm btn-light border mb-0 text-muted">
+                        <i class="bi bi-upload me-1"></i> Choose Local Image
+                        <input type="file" asp-for="PhotoFile" id="photoFileInput" class="d-none" accept="image/jpeg,image/png,image/webp" />
+                    </label>
+                </div>
+                <div class="small text-muted" style="font-size: 0.75rem;">
+                    Max 5 MB. Formats: JPG, PNG, WEBP.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Capture Modal -->
+<div class="modal fade" id="cameraCaptureModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-bottom py-3 px-4">
+                <h6 class="modal-title fw-bold text-dark mb-0" id="cameraModalLabel"><i class="bi bi-camera-video me-2 text-teal" style="color:#0d9488;"></i> Capture Employee Photograph</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="camera-feed-container mb-3" style="max-width: 400px; height: 300px; margin: 0 auto;">
+                    <video id="employeeCameraVideo" autoplay playsinline muted class="camera-feed-video" style="height: 300px;"></video>
+                    <div class="face-target-guide" style="width: 180px; height: 220px;"></div>
+                </div>
+                <div id="cameraStatusText" class="small text-muted mb-2">Align face within the guide and click Capture.</div>
+            </div>
+            <div class="modal-footer bg-light border-top py-2 px-4">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" id="btnCloseCamera">Cancel</button>
+                <button type="button" class="btn btn-hrms-teal btn-sm px-4 fw-bold" id="btnTakeSnapshot">
+                    <i class="bi bi-camera me-1"></i> Capture Snapshot
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+

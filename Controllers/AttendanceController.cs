@@ -1,4 +1,5 @@
 using HRMS.Interfaces;
+using HRMS.Models;
 using HRMS.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ public class AttendanceController : Controller
     private readonly IFaceRecognitionService _faceService;
     private readonly IEmployeeRepository _employeeRepo;
     private readonly IDepartmentRepository _departmentRepo;
+    private readonly IBiometricDeviceService _biometricService;
     private readonly ILogger<AttendanceController> _logger;
 
     public AttendanceController(
@@ -19,12 +21,14 @@ public class AttendanceController : Controller
         IFaceRecognitionService faceService,
         IEmployeeRepository employeeRepo,
         IDepartmentRepository departmentRepo,
+        IBiometricDeviceService biometricService,
         ILogger<AttendanceController> logger)
     {
         _attendanceService = attendanceService;
         _faceService = faceService;
         _employeeRepo = employeeRepo;
         _departmentRepo = departmentRepo;
+        _biometricService = biometricService;
         _logger = logger;
     }
 
@@ -170,6 +174,50 @@ public class AttendanceController : Controller
             MatchScore = matchResult.Confidence,
             IsLate = punch.IsLate
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DeviceSync()
+    {
+        var logs = await _biometricService.GetRecentLogsAsync(100);
+        var employees = await _employeeRepo.GetAllAsync();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        ViewBag.RecentLogs = logs;
+        ViewBag.Employees = employees.Where(e => e.IsActive).OrderBy(e => e.EmployeeNo).ToList();
+        ViewBag.ApiKey = _biometricService.GetConfiguredApiKey();
+        ViewBag.IsApiKeyRequired = _biometricService.IsApiKeyRequired();
+        ViewBag.WebhookUrl = $"{Request.Scheme}://{Request.Host}/api/biometric/punch";
+        ViewBag.BulkWebhookUrl = $"{Request.Scheme}://{Request.Host}/api/biometric/bulk-sync";
+        ViewBag.TodayPunchesCount = logs.Count(l => DateOnly.FromDateTime(l.DevicePunchTime) == today && l.IngestionStatus == "Success");
+
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SimulateDevicePunch(BiometricPunchIngestDto dto)
+    {
+        var (success, message, log) = await _biometricService.IngestSinglePunchAsync(
+            dto,
+            _biometricService.GetConfiguredApiKey(),
+            sourceType: "Simulator");
+
+        TempData["AlertMessage"] = message;
+        TempData["AlertSuccess"] = success;
+
+        return RedirectToAction(nameof(DeviceSync));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TriggerExternalDbSync()
+    {
+        var result = await _biometricService.SyncFromExternalDatabaseAsync();
+        TempData["AlertMessage"] = string.Join(" ", result.Messages);
+        TempData["AlertSuccess"] = result.Success;
+
+        return RedirectToAction(nameof(DeviceSync));
     }
 }
 

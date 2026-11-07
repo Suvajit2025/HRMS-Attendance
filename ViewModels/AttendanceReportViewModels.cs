@@ -82,7 +82,7 @@ public class AttendanceMonthlySummaryViewModel
 public class MonthlyAttendanceReportViewModel
 {
     public AttendanceReportFilterModel Filter { get; set; } = new();
-    public string BusinessName { get; set; } = "Apex Industrial Technologies";
+    public string BusinessName { get; set; } = "Demo Technologies";
     public string PreparedBy { get; set; } = "HR Administrator";
     public DateTime GeneratedDate { get; set; } = DateTime.Now;
     public int DaysInMonth { get; set; } = 31;

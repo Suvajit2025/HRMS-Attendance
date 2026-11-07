@@ -2,7 +2,7 @@ namespace HRMS.Models;
 
 public class AppSettingsModel
 {
-    public string CompanyName { get; set; } = "Apex Industrial Technologies";
+    public string CompanyName { get; set; } = "Demo Technologies";
     public string AppTitle { get; set; } = "HRMS — Workforce Management";
     public string ShiftStartTime { get; set; } = "09:00:00";
     public string ShiftEndTime { get; set; } = "18:00:00";

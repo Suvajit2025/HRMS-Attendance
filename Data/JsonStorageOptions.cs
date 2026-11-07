@@ -13,6 +13,6 @@ public class JsonStorageOptions
     public string ShiftEndTime { get; set; } = "18:00:00";
     public string TimeZoneId { get; set; } = "India Standard Time";
     public float FaceMatchThreshold { get; set; } = 0.65f;
-    public string CompanyName { get; set; } = "Apex Industrial Technologies";
+    public string CompanyName { get; set; } = "Demo Technologies";
     public string AppTitle { get; set; } = "HRMS — Workforce Management";
 }

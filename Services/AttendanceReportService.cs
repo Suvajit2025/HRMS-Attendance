@@ -226,7 +226,7 @@ public class AttendanceReportService : IAttendanceReportService
         return new MonthlyAttendanceReportViewModel
         {
             Filter = filter,
-            BusinessName = !string.IsNullOrWhiteSpace(_storageOptions.CompanyName) ? _storageOptions.CompanyName : "Apex Industrial Technologies",
+            BusinessName = !string.IsNullOrWhiteSpace(_storageOptions.CompanyName) ? _storageOptions.CompanyName : "Demo Technologies",
             PreparedBy = !string.IsNullOrWhiteSpace(preparedBy) ? preparedBy : "HR Administrator",
             GeneratedDate = now,
             DaysInMonth = daysInMonth,

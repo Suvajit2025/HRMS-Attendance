@@ -61,6 +61,11 @@
             <span>Attendance History</span>
         </a>
 
+        <a class="hrms-nav-link @(currentController == "Attendance" && currentAction == "DeviceSync" ? "active" : "")" asp-controller="Attendance" asp-action="DeviceSync" title="Biometric Device Sync">
+            <i class="bi bi-hdd-network-fill"></i>
+            <span>Device Integration</span>
+        </a>
+
         <div class="hrms-nav-section-title">Attendance Reports</div>
 
         <a class="hrms-nav-link @(currentController == "AttendanceReport" ? "active" : "")" asp-controller="AttendanceReport" asp-action="Index" title="Monthly Attendance Report">

@@ -35,6 +35,7 @@ builder.Services.AddScoped<ILeavePolicyRepository, JsonLeavePolicyRepository>();
 builder.Services.AddScoped<ILeaveBalanceRepository, JsonLeaveBalanceRepository>();
 builder.Services.AddScoped<ILeaveApplicationRepository, JsonLeaveApplicationRepository>();
 builder.Services.AddScoped<ILeaveTransactionRepository, JsonLeaveTransactionRepository>();
+builder.Services.AddScoped<IBiometricDeviceLogRepository, JsonBiometricDeviceLogRepository>();
 
 // 3. Service Layer
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
@@ -48,6 +49,7 @@ builder.Services.AddScoped<ILeaveService, LeaveService>();
 builder.Services.AddScoped<IAttendanceCalendarResolver, AttendanceCalendarResolver>();
 builder.Services.AddScoped<IAttendanceReportService, AttendanceReportService>();
 builder.Services.AddScoped<IAttendanceExcelExportService, AttendanceExcelExportService>();
+builder.Services.AddScoped<IBiometricDeviceService, BiometricDeviceService>();
 
 // 4. Authentication & Authorization
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

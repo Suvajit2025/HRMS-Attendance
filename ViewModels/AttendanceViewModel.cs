@@ -30,7 +30,7 @@ public class AttendanceHistoryViewModel
 
 public class AttendanceTerminalViewModel
 {
-    public string CompanyName { get; set; } = "Apex Industrial Technologies";
+    public string CompanyName { get; set; } = "Demo Technologies";
     public string ShiftStartTime { get; set; } = "09:00:00";
     public float FaceMatchThreshold { get; set; } = 0.65f;
     public int TodayPunchesCount { get; set; }

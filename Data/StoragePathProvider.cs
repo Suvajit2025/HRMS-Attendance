@@ -99,6 +99,9 @@ public class StoragePathProvider
     public string LeaveApplicationsFilePath => Path.Combine(_dataDirectory, "leave-applications.json");
     public string LeaveTransactionsFilePath => Path.Combine(_dataDirectory, "leave-transactions.json");
 
+    // Biometric Device Integration store
+    public string BiometricLogsFilePath => Path.Combine(_dataDirectory, "biometric-device-logs.json");
+
     private void EnsureDirectoriesCreated()
     {
         Directory.CreateDirectory(_dataDirectory);

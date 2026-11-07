@@ -36,7 +36,7 @@ public static class HrmsTestSuite
                 ShiftEndTime = "18:00:00",
                 TimeZoneId = "India Standard Time",
                 FaceMatchThreshold = 0.65f,
-                CompanyName = "Test Apex Industries"
+                CompanyName = "Demo Industries"
             });
 
             var pathProvider = new StoragePathProvider(options);
@@ -281,7 +281,7 @@ public static class HrmsTestSuite
                 Assert(novReport.DaysInMonth == 30, "November must have 30 days");
                 Assert(novReport.ValidDays.Count == 30, "November valid days count must be 30");
                 Assert(novReport.Employees.Count > 0, "Must have employees in report");
-                Assert(novReport.BusinessName == "Test Apex Industries", "Business name mismatch");
+                Assert(novReport.BusinessName == "Demo Industries", "Business name mismatch");
                 Assert(novReport.PreparedBy == "Test Administrator", "PreparedBy mismatch");
 
                 // Check first employee daily statuses
@@ -388,6 +388,15 @@ public static class HrmsTestSuite
             var leaveBalanceRepo = new JsonLeaveBalanceRepository(fileStorage, pathProvider, NullLogger<JsonLeaveBalanceRepository>.Instance);
             var leaveAppRepo = new JsonLeaveApplicationRepository(fileStorage, pathProvider, NullLogger<JsonLeaveApplicationRepository>.Instance);
             var leaveTxnRepo = new JsonLeaveTransactionRepository(fileStorage, pathProvider, NullLogger<JsonLeaveTransactionRepository>.Instance);
+            var biometricLogRepo = new JsonBiometricDeviceLogRepository(fileStorage, pathProvider, NullLogger<JsonBiometricDeviceLogRepository>.Instance);
+
+            var biometricConfig = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    { "BiometricIntegration:ApiKey", "test-key-2026" },
+                    { "BiometricIntegration:RequireApiKey", "false" }
+                })
+                .Build();
 
             // Services for Holiday & Leave modules
             var holidayService = new HolidayService(holidayRepo, NullLogger<HolidayService>.Instance);
@@ -395,6 +404,7 @@ public static class HrmsTestSuite
             var leaveCalcService = new LeaveCalculationService(weeklyOffService, holidayService, leavePolicyRepo, NullLogger<LeaveCalculationService>.Instance);
             var leaveService = new LeaveService(leaveAppRepo, leaveBalanceRepo, leaveTypeRepo, leavePolicyRepo, leaveTxnRepo, empRepo, leaveCalcService, NullLogger<LeaveService>.Instance);
             var calendarResolver = new AttendanceCalendarResolver(holidayService, weeklyOffService, leaveService, leaveTypeRepo, empRepo, attRepo);
+            var biometricService = new BiometricDeviceService(attRepo, empRepo, deptRepo, biometricLogRepo, options, biometricConfig, NullLogger<BiometricDeviceService>.Instance);
 
             // TEST 14: Holiday Master & Scoping Resolution
             if (await RunTest("Holiday Master & Scoping Resolution", async () =>
@@ -609,6 +619,88 @@ public static class HrmsTestSuite
                 // Case 4: Working Day without punches (Oct 29 2026 Thursday) -> Resolves to 'A'
                 var statusAbsent = await calendarResolver.ResolveDailyStatusAsync(emp.EmployeeId, new DateOnly(2026, 10, 29));
                 Assert(statusAbsent.StatusCode == "A", $"Unpunched working day must resolve to 'A', got '{statusAbsent.StatusCode}'");
+            })) passed++; else failed++;
+
+            // TEST 19: Biometric Device Real-time Punch Ingestion & Employee Matching
+            if (await RunTest("Biometric Device Real-time Punch Ingestion & Resolution", async () =>
+            {
+                var testPunchTime = new DateTime(2026, 11, 20, 8, 55, 0); // 8:55 AM (Before 9 AM shift start)
+                var ingestDto = new BiometricPunchIngestDto
+                {
+                    EmployeeNo = "EMP004", // Sneha Rao
+                    DeviceId = "HIKVISION-FACE-GATE-01",
+                    PunchTime = testPunchTime,
+                    PunchType = "IN",
+                    VerificationMode = "FaceRecognition",
+                    DeviceLocation = "North Gate"
+                };
+
+                var (success, msg, log) = await biometricService.IngestSinglePunchAsync(ingestDto, sourceType: "API");
+                Assert(success, $"Biometric single punch failed: {msg}");
+                Assert(log.IngestionStatus == "Success", $"Expected Success, got {log.IngestionStatus}");
+                Assert(log.ResolvedEmployeeNo == "EMP004", $"Expected EMP004, got {log.ResolvedEmployeeNo}");
+                Assert(log.ResolvedPunchType == "IN", $"Expected IN, got {log.ResolvedPunchType}");
+
+                // Verify attendance record was written to attendance repository
+                var punches = await attRepo.GetEmployeePunchesTodayAsync(log.ResolvedEmployeeId!, DateOnly.FromDateTime(testPunchTime));
+                Assert(punches.Count > 0, "Attendance record was not created from biometric punch");
+                var createdPunch = punches.First();
+                Assert(createdPunch.PunchType == "IN", "PunchType must be IN");
+                Assert(!createdPunch.IsLate, "8:55 AM punch must not be marked late for 09:00 shift");
+                Assert(createdPunch.Remarks!.Contains("HIKVISION-FACE-GATE-01"), "Remarks must contain DeviceId");
+
+                // Check audit log in biometric log repository
+                var recentLogs = await biometricLogRepo.GetRecentAsync(10);
+                Assert(recentLogs.Any(l => l.LogId == log.LogId && l.RawEmployeeIdentifier == "EMP004"), "Device audit log entry missing");
+            })) passed++; else failed++;
+
+            // TEST 20: Biometric Smart Auto-Direction, Duplicate Scan Tolerance & Bulk Sync
+            if (await RunTest("Biometric Smart Auto-Direction, Duplicate Tolerance & Bulk Sync", async () =>
+            {
+                var baseTime = new DateTime(2026, 11, 20, 18, 15, 0);
+
+                // 1. Auto-Direction: Employee EMP004 already has IN punch today; sending "Auto" should resolve to OUT
+                var autoOutDto = new BiometricPunchIngestDto
+                {
+                    EmployeeNo = "EMP004",
+                    DeviceId = "HIKVISION-FACE-GATE-01",
+                    PunchTime = baseTime,
+                    PunchType = "Auto",
+                    VerificationMode = "FaceRecognition"
+                };
+
+                var (outSuccess, outMsg, outLog) = await biometricService.IngestSinglePunchAsync(autoOutDto, sourceType: "API");
+                Assert(outSuccess, $"Auto punch failed: {outMsg}");
+                Assert(outLog.ResolvedPunchType == "OUT", $"Auto punch should resolve to OUT, got {outLog.ResolvedPunchType}");
+                Assert(outLog.IngestionStatus == "Success", "OUT punch should succeed");
+
+                // 2. Duplicate Tolerance: Rapid scan 30 seconds later must be ignored with DuplicateSkipped
+                var rapidScanDto = new BiometricPunchIngestDto
+                {
+                    EmployeeNo = "EMP004",
+                    DeviceId = "HIKVISION-FACE-GATE-01",
+                    PunchTime = baseTime.AddSeconds(30),
+                    PunchType = "Auto"
+                };
+
+                var (dupSuccess, dupMsg, dupLog) = await biometricService.IngestSinglePunchAsync(rapidScanDto, sourceType: "API");
+                Assert(dupLog.IngestionStatus == "DuplicateSkipped", $"Rapid duplicate scan should be DuplicateSkipped, got {dupLog.IngestionStatus}");
+
+                // 3. Bulk Sync with Unknown Employee handling
+                var bulkRequest = new BiometricBulkSyncRequestDto
+                {
+                    DeviceId = "ZKTECO-SPEEDFACE-02",
+                    Punches = new List<BiometricPunchIngestDto>
+                    {
+                        new() { EmployeeNo = "EMP005", PunchTime = new DateTime(2026, 11, 21, 9, 20, 0), PunchType = "IN" }, // Late
+                        new() { EmployeeNo = "UNKNOWN_EMP_9999", PunchTime = new DateTime(2026, 11, 21, 9, 25, 0), PunchType = "IN" } // Unknown
+                    }
+                };
+
+                var bulkResult = await biometricService.IngestBulkPunchesAsync(bulkRequest);
+                Assert(bulkResult.TotalReceived == 2, $"Expected 2 received, got {bulkResult.TotalReceived}");
+                Assert(bulkResult.TotalProcessed == 1, $"Expected 1 processed, got {bulkResult.TotalProcessed}");
+                Assert(bulkResult.TotalErrors == 1, $"Expected 1 error for unknown employee, got {bulkResult.TotalErrors}");
             })) passed++; else failed++;
         }
         finally

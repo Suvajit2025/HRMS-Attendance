@@ -1,0 +1,323 @@
+@using HRMS.Models
+@{
+    ViewData["Title"] = "Biometric Device Integration";
+    var logs = ViewBag.RecentLogs as IReadOnlyList<BiometricDeviceLogModel> ?? new List<BiometricDeviceLogModel>();
+    var employees = ViewBag.Employees as IReadOnlyList<EmployeeModel> ?? new List<EmployeeModel>();
+    string webhookUrl = ViewBag.WebhookUrl as string ?? "/api/biometric/punch";
+    string bulkWebhookUrl = ViewBag.BulkWebhookUrl as string ?? "/api/biometric/bulk-sync";
+    string apiKey = ViewBag.ApiKey as string ?? "hrms-biometric-secret-key-2026";
+    bool isApiKeyRequired = (bool)(ViewBag.IsApiKeyRequired ?? false);
+    int todayCount = (int)(ViewBag.TodayPunchesCount ?? 0);
+}
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-hdd-network text-teal me-2" style="color:#0d9488;"></i> Biometric Device Integration & Sync
+        </h4>
+        <div class="text-muted small">Real-time punch ingestion gateway for external facial recognition terminals and biometric databases</div>
+    </div>
+    <div class="d-flex gap-2">
+        <form asp-action="TriggerExternalDbSync" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-arrow-repeat"></i>
+                <span>Sync External DB</span>
+            </button>
+        </form>
+        <a asp-action="Daily" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-calendar2-check"></i>
+            <span>Today's Attendance</span>
+        </a>
+    </div>
+</div>
+
+@if (TempData["AlertMessage"] != null)
+{
+    bool isSuccess = TempData["AlertSuccess"] as bool? ?? true;
+    <div class="alert @(isSuccess ? "alert-success border-success-subtle" : "alert-warning border-warning-subtle") alert-dismissible fade show shadow-sm rounded-3 mb-4" role="alert">
+        <i class="bi @(isSuccess ? "bi-check-circle-fill text-success" : "bi-exclamation-triangle-fill text-warning") me-2"></i>
+        @TempData["AlertMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Gateway KPI Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border shadow-sm rounded-3 p-3 h-100 bg-white">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-semibold">Gateway Status</div>
+                    <div class="fs-5 fw-bold text-success mt-1">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-record-fill me-1"></i> Listening
+                        </span>
+                    </div>
+                </div>
+                <div class="p-2 bg-success-subtle rounded text-success">
+                    <i class="bi bi-hdd-network fs-4"></i>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">REST API & Webhooks active</div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border shadow-sm rounded-3 p-3 h-100 bg-white border-start border-start-4 border-teal" style="border-left: 4px solid #0d9488 !important;">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-semibold">Ingested Today</div>
+                    <div class="fs-4 fw-bold text-dark mt-1">@todayCount <span class="fs-6 text-muted fw-normal">punches</span></div>
+                </div>
+                <div class="p-2 bg-light rounded text-teal" style="color:#0d9488;">
+                    <i class="bi bi-fingerprint fs-4"></i>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">From external biometric terminals</div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border shadow-sm rounded-3 p-3 h-100 bg-white">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-semibold">Security & API Key</div>
+                    <div class="fs-6 fw-bold text-dark mt-1 font-monospace text-truncate" style="max-width: 160px;" title="@apiKey">
+                        @apiKey
+                    </div>
+                </div>
+                <div class="p-2 bg-light rounded text-secondary">
+                    <i class="bi bi-key fs-4"></i>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">Auth: @(isApiKeyRequired ? "Enforced (Header / Bearer)" : "Optional (Dev Mode)")</div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border shadow-sm rounded-3 p-3 h-100 bg-white">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-semibold">Direction Logic</div>
+                    <div class="fs-5 fw-bold text-dark mt-1">Smart Auto-Detect</div>
+                </div>
+                <div class="p-2 bg-light rounded text-secondary">
+                    <i class="bi bi-arrow-left-right fs-4"></i>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">Auto resolves IN or OUT sequence</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Live Device Ingestion Audit Log -->
+    <div class="col-lg-8">
+        <div class="card border shadow-sm rounded-3 overflow-hidden">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold text-dark">Live Biometric Device Ingestion Log</span>
+                    <span class="badge bg-light text-muted border ms-2">Last @logs.Count entries</span>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.reload();" title="Refresh Log">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+                <table class="table hrms-table table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top" style="z-index: 5;">
+                        <tr>
+                            <th>Device Time</th>
+                            <th>Device ID</th>
+                            <th>Employee</th>
+                            <th>Direction</th>
+                            <th>Verification</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (logs.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                    No biometric device punches logged yet.<br />
+                                    Use the simulator or send a sample punch from your face recognition device to start.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var log in logs)
+                            {
+                                string statusBadge = log.IngestionStatus switch
+                                {
+                                    "Success" => "bg-success-subtle text-success border border-success-subtle",
+                                    "DuplicateSkipped" => "bg-warning-subtle text-warning-emphasis border border-warning-subtle",
+                                    "EmployeeNotFound" => "bg-danger-subtle text-danger border border-danger-subtle",
+                                    _ => "bg-secondary-subtle text-secondary border"
+                                };
+
+                                string dirBadge = log.ResolvedPunchType switch
+                                {
+                                    "IN" => "bg-success-subtle text-success border border-success-subtle",
+                                    "OUT" => "bg-danger-subtle text-danger border border-danger-subtle",
+                                    _ => "bg-light text-dark border"
+                                };
+
+                                <tr>
+                                    <td class="font-monospace small text-nowrap">@log.DevicePunchTime.ToString("dd MMM yyyy, hh:mm:ss tt")</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border font-monospace">@log.DeviceId</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(log.ResolvedEmployeeName))
+                                        {
+                                            <div class="fw-semibold text-dark">@log.ResolvedEmployeeName</div>
+                                            <div class="text-muted small">@log.ResolvedEmployeeNo (@(log.DepartmentName ?? "General"))</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-danger fw-semibold">Unknown ID: @log.RawEmployeeIdentifier</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @dirBadge px-2 py-1 fw-bold">@log.ResolvedPunchType</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-muted border">
+                                            <i class="bi @(log.VerificationMode.Contains("Face", StringComparison.OrdinalIgnoreCase) ? "bi-person-bounding-box" : "bi-fingerprint") me-1"></i>
+                                            @log.VerificationMode
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @statusBadge px-2 py-1">@log.IngestionStatus</span>
+                                    </td>
+                                    <td class="small text-muted text-truncate" style="max-width: 200px;" title="@log.Remarks">
+                                        @log.Remarks
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Device Punch Simulator & API Reference -->
+    <div class="col-lg-4">
+        <!-- Simulator Card -->
+        <div class="card border shadow-sm rounded-3 mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <div class="fw-bold text-dark">
+                    <i class="bi bi-cpu text-teal me-1" style="color:#0d9488;"></i> Device Punch Simulator
+                </div>
+                <div class="text-muted small">Simulate an external face terminal sending a punch to HRMS</div>
+            </div>
+            <div class="card-body p-3">
+                <form asp-action="SimulateDevicePunch" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted mb-1">Select Employee</label>
+                        <select name="EmployeeNo" class="form-select form-select-sm" required>
+                            <option value="">-- Choose Employee --</option>
+                            @foreach (var emp in employees)
+                            {
+                                <option value="@emp.EmployeeNo">@emp.EmployeeNo — @emp.FullName (@(emp.DepartmentName ?? "General"))</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted mb-1">Punch Direction</label>
+                            <select name="PunchType" class="form-select form-select-sm">
+                                <option value="Auto" selected>Auto-Detect</option>
+                                <option value="IN">IN (Entry)</option>
+                                <option value="OUT">OUT (Exit)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted mb-1">Verification Mode</label>
+                            <select name="VerificationMode" class="form-select form-select-sm">
+                                <option value="FaceRecognition" selected>Face Recognition</option>
+                                <option value="Fingerprint">Fingerprint</option>
+                                <option value="Card">RFID Card</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted mb-1">Device ID</label>
+                            <input type="text" name="DeviceId" value="FACECAM-ENTRANCE-01" class="form-control form-control-sm font-monospace" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted mb-1">Device Location</label>
+                            <input type="text" name="DeviceLocation" value="Main Gate" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1" style="background-color: #0f766e; border-color: #0f766e;">
+                        <i class="bi bi-send-check"></i>
+                        <span>Simulate Device Punch</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Vendor & Integration Reference Card -->
+        <div class="card border shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom">
+                <div class="fw-bold text-dark">
+                    <i class="bi bi-code-slash text-teal me-1" style="color:#0d9488;"></i> Hardware Vendor Integration Guide
+                </div>
+                <div class="text-muted small">Configure your face terminal or biometric middleware</div>
+            </div>
+            <div class="card-body p-3 small">
+                <div class="mb-3">
+                    <div class="text-muted fw-semibold mb-1">REST API Webhook URL:</div>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@webhookUrl" id="webhookInput" readonly />
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('webhookInput').value); alert('Copied Webhook URL!');" title="Copy URL">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted fw-semibold mb-1">API Key Header (`X-Device-ApiKey`):</div>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@apiKey" id="apiKeyInput" readonly />
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('apiKeyInput').value); alert('Copied API Key!');" title="Copy Key">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted fw-semibold mb-1">Sample Terminal JSON Payload:</div>
+                    <pre class="p-2 bg-light border rounded small font-monospace mb-0" style="font-size: 0.75rem;">
+{
+  "employeeNo": "EMP001",
+  "deviceId": "HIK-FACE-01",
+  "punchTime": "2026-11-07T09:05:00",
+  "punchType": "Auto",
+  "verificationMode": "FaceRecognition"
+}</pre>
+                </div>
+
+                <div class="p-2 bg-light border rounded">
+                    <div class="fw-semibold text-dark"><i class="bi bi-database me-1"></i> External Database Polling:</div>
+                    <div class="text-muted mt-1">
+                        If your biometric software (eSSL, ZKTime, Realtime) writes to a local SQL/Access/MySQL table, configure <code>BiometricIntegration:ExternalDatabase:ConnectionString</code> in <code>appsettings.json</code> to poll logs continuously.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

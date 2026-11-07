@@ -337,3 +337,4 @@ public class BiometricDeviceService : IBiometricDeviceService
         return "OUT";
     }
 }
+

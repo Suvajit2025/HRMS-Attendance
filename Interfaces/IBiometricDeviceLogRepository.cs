@@ -10,3 +10,4 @@ public interface IBiometricDeviceLogRepository
     Task AddAsync(BiometricDeviceLogModel log);
     Task AddBatchAsync(IEnumerable<BiometricDeviceLogModel> logs);
 }
+

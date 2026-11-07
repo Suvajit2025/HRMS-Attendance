@@ -19,3 +19,4 @@ public class BiometricDeviceLogModel
     public string? Remarks { get; set; }
     public DateTime IngestedAt { get; set; } = DateTime.UtcNow;
 }
+

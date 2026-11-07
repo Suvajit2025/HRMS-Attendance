@@ -31,3 +31,4 @@ public class BiometricSyncResultDto
     public int TotalErrors { get; set; }
     public List<string> Messages { get; set; } = new();
 }
+

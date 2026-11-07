@@ -85,3 +85,4 @@ public class JsonBiometricDeviceLogRepository : IBiometricDeviceLogRepository
         _logger.LogInformation("Saved batch of biometric device punch logs");
     }
 }
+

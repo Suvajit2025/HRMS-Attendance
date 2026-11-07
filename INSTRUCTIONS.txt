@@ -1,0 +1,168 @@
+================================================================================
+          HRMS WORKFORCE MANAGEMENT SYSTEM - QUICK SETUP & USER GUIDE
+================================================================================
+
+Thank you for choosing HRMS Workforce Management System (.NET 8).
+This package is fully self-contained and pre-configured. No database installation 
+or developer environment setup is required.
+
+================================================================================
+1. SYSTEM REQUIREMENTS
+================================================================================
+- Operating System : Windows 10, Windows 11, or Windows Server (64-bit)
+- Hardware         : 4 GB RAM minimum (8 GB recommended)
+- Web Browser      : Google Chrome, Microsoft Edge, Mozilla Firefox, or Safari
+- Web Camera       : Optional (only needed for Face Recognition Attendance Terminal)
+- Prerequisites    : NONE (All .NET 8 runtimes and libraries are bundled inside)
+
+================================================================================
+2. QUICK START (3 SIMPLE STEPS)
+================================================================================
+
+STEP 1: EXTRACT THE ZIP ARCHIVE
+--------------------------------
+- Right-click the downloaded zip file and select "Extract All...".
+- Choose a destination folder (e.g., C:\HRMS or Desktop\HRMS).
+- Ensure all files and subfolders (wwwroot, runtimes, appsettings.json) remain 
+  in the same folder together.
+
+STEP 2: LAUNCH THE HRMS SERVER
+------------------------------
+- Double-click "Run-HRMS.bat" (or "HRMS.exe").
+- A black console window will open displaying:
+    "HRMS Workforce Server started successfully at http://0.0.0.0:5055"
+- Your default web browser will automatically open:
+    http://localhost:5055
+
+* IMPORTANT: Keep the console window open while using HRMS.
+  Closing the window stops the application.
+
+STEP 3: LOG IN
+--------------
+- On the login screen, enter the default administrator credentials:
+    Username : admin
+    Password : 123
+- Click "Sign In" to open the HRMS Dashboard.
+
+================================================================================
+3. FIRST-TIME FIREWALL PROMPT (ALLOW ACCESS)
+================================================================================
+When you start the application for the first time, Windows Defender Firewall 
+may display an alert:
+   "Windows Defender Firewall has blocked some features of this app"
+
+- Check the box: "Private networks, such as my home or work network"
+- Click "Allow access"
+This allows other office computers and mobile devices on your Wi-Fi network 
+to connect to the system.
+
+================================================================================
+4. HOW TO ACCESS FROM MOBILE PHONES & OTHER OFFICE COMPUTERS
+================================================================================
+Any device (Android phone, iPhone, iPad, laptop, or desktop) connected to the 
+same office Wi-Fi / Local Area Network (LAN) can access HRMS without installing 
+anything:
+
+1. On the PC running HRMS:
+   - Press [Windows Key + R], type "cmd", and press Enter.
+   - In the command prompt, type:
+         ipconfig
+   - Find your "IPv4 Address" (for example: 192.168.1.15).
+
+2. On your Mobile Phone or other PC:
+   - Open Chrome, Safari, or Edge.
+   - Enter your host PC IP address and port:
+         http://192.168.1.15:5055
+   - The HRMS mobile-responsive login screen will appear immediately!
+
+================================================================================
+5. LOCAL DATABASE & DATA BACKUP
+================================================================================
+The application uses a high-performance local JSON database engine:
+- On first startup, HRMS automatically seeds your company departments, 
+  default admin user, holiday types, and leave policies.
+- Database files are stored securely at:
+    C:\Users\<YourUsername>\AppData\Local\HRMS\Data
+  (Shortcut: Press Win+R, type "%LOCALAPPDATA%\HRMS\Data" and hit Enter)
+
+- Uploaded employee profile photos and documents are saved at:
+    C:\Users\<YourUsername>\AppData\Local\HRMS\Uploads
+
+BACKUP TIP:
+To backup all employee records, attendance punches, holidays, and leave ledgers, 
+simply copy the "Data" folder to a backup drive or cloud storage.
+
+================================================================================
+6. CUSTOM CONFIGURATION (APPSETTINGS.JSON)
+================================================================================
+To customize company settings, open "appsettings.json" in Notepad:
+
+- "CompanyName"      : Change "Demo Technologies" to your company's legal name.
+- "AppTitle"         : Customize the application header title.
+- "ShiftStartTime"   : Default office shift start (e.g., "09:00:00").
+- "ShiftEndTime"     : Default office shift end (e.g., "18:00:00").
+- "AdminUsername"    : Change default administrator username.
+- "AdminPassword"    : Change default administrator password.
+- "urls"             : Change listening port if 5055 is in use by another app 
+                       (e.g., "http://0.0.0.0:5056").
+
+================================================================================
+7. MODULES INCLUDED IN THIS RELEASE
+================================================================================
+1. DASHBOARD
+   - Real-time Present / Absent / Holiday / On Leave headcount cards.
+   - Today's live punch log and departmental breakdown.
+
+2. EMPLOYEE MANAGEMENT
+   - Employee profile directory, search, filter, and add/edit profiles.
+   - Face template registration for webcam-based biometric recognition.
+   - Aadhaar number masking protection (XX-XXXX-1234).
+
+3. ATTENDANCE MANAGEMENT
+   - Attendance Terminal: Webcam face recognition & instant manual punch IN/OUT.
+   - Daily Attendance: View and filter real-time employee attendance per day.
+   - Attendance History: Complete employee attendance timeline.
+
+4. ATTENDANCE REPORTS
+   - Monthly Attendance Matrix: Day-by-day P (Present), A (Absent), H (Holiday).
+   - Pre-joining dates properly blanked (no false absences).
+   - Professional Excel (.xlsx) Export with company header, summaries, and color coding.
+
+5. HOLIDAY & WEEKLY OFF MANAGEMENT
+   - Holiday Master: Manage national, public, and company holidays.
+   - Scope holidays by Organization, Location, or Department.
+   - Interactive Monthly / Yearly Holiday Calendar.
+   - Weekly Off Configuration (Sunday, Saturday-Sunday, alternate Saturdays).
+
+6. LEAVE MANAGEMENT
+   - Leave Type Master (Casual Leave, Sick Leave, Earned Leave, LWP, Comp-Off).
+   - Leave Application workflow with automatic working-day duration calculation.
+   - Admin Approval / Rejection with balance reservation and audit ledger.
+   - Employee Leave Balance tracking and reports.
+
+================================================================================
+8. TROUBLESHOOTING & FAQ
+================================================================================
+
+Q1: Browser says "This site can't be reached" (http://localhost:5055).
+A1: Ensure the black console window ("Run-HRMS.bat" or "HRMS.exe") is running. 
+    If you closed the window, launch "Run-HRMS.bat" again.
+
+Q2: Port 5055 is already used by another software.
+A2: Open "appsettings.json" in Notepad, change:
+        "urls": "http://0.0.0.0:5055"
+    to:
+        "urls": "http://0.0.0.0:5060"
+    Save the file and restart "Run-HRMS.bat". Access via http://localhost:5060.
+
+Q3: Mobile phone cannot connect to http://<Host-IP>:5055.
+A3: Ensure both your PC and mobile are on the exact same Wi-Fi router / SSID.
+    Also verify Windows Firewall is set to Allow on Private networks.
+
+Q4: How do I stop or shut down the server?
+A4: Click on the console window and press [Ctrl + C], or simply close the 
+    console window.
+
+================================================================================
+                 (C) 2026 HRMS Workforce Management System
+================================================================================
